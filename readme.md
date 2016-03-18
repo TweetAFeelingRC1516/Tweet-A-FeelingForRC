@@ -16,7 +16,7 @@ docker-compose up
 
 ________________________________
 
-For informations about this project, and how to use API funcions, go to the [wiki](https://github.com/Silvernightwolf/Tweet-A-FeelingForRC/wiki).  
+For informations about this project, and how to use API funcions, go to the [wiki](https://github.com/TweetAFeelingRC1516/Tweet-A-FeelingForRC/wiki).  
 
 ________________________________
   
