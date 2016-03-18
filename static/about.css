@@ -1,0 +1,52 @@
+a:link {
+    color: blue;
+    text-decoration: none;
+}
+a:visited {
+    color: blue;
+    text-decoration: none;
+}
+a:hover {
+    color: blue;
+    text-decoration: underline;
+}
+a:active {
+    color: black;
+    text-decoration: none;
+}
+
+.author {
+    width: 100px;
+    display: inline-block;
+    border: 3px solid #3399ff;
+    border-radius: 6px;
+    padding: 5px;
+    margin: 0px 15px;
+}
+#FG:hover {
+    border: 3px solid #3333ff; 
+    background-color: #edf0f7;
+    transform: scale(1.05, 1.05);  
+}
+#AP:hover {
+    border: 3px solid #009900; 
+    background-color: #e5ffe5;
+    transform: scale(1.05, 1.05);
+}
+#GDA:hover {
+    border: 3px solid #ff0000; 
+    background-color: #ffe5e5;
+    transform: scale(1.05, 1.05);
+}
+
+div, h1, h2 {
+    text-align: center;
+}
+
+.descript {
+    width: 500px;
+    display: inline-block;
+    border: 3px solid #3399ff;
+    border-radius: 6px;
+    padding: 15px 5px;
+}

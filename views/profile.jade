@@ -1,0 +1,78 @@
+extends header
+
+block content
+	div#userBox
+		| <strong>Username:</strong> #{user} <br>
+		form.headerForm(action='/_main', method='get'): input#back(type='submit', value='<- back')
+		| &nbsp;
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_tweets', method='get'): input(type='submit', value='Tweets')
+		| &nbsp;
+		form.headerForm(action='/_userlist', method='get'): input(type='submit', value='Userlist')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_charts', method='get'): input(type='submit', value='Charts')
+		| &nbsp;
+		form.headerForm(action='/_notifications', method='get'): input(type='submit', value='Notifications')
+		| &nbsp;
+		h4#notifNum= n_count
+	table
+		caption
+			h1
+				img#avatar(src= avatar, alt='Profile image')
+				| &nbsp;~ #{user} ~
+			h3 API Code: #{apiCode}
+
+		tr
+			td.west
+			td.cellCenter(colspan='2')
+				h3 Messages to follow
+			td.east
+		tr
+			td
+			td(colspan='2')
+				table
+					form(action='/_profile', method='post', enctype='application/x-www-form-urlencoded')
+						tr
+							td.followMenu
+								fieldset
+									legend Feelings updates
+									each f_elem in feelings
+										if f_elem[1]
+											input(type='checkbox', name='feelings', value= f_elem[0], checked)
+										else
+											input(type='checkbox', name='feelings', value= f_elem[0])
+										| ##{f_elem[0]} Updates<br>
+							td.followMenu
+								fieldset
+									legend Topic updates
+									each t_elem in topics
+										if t_elem[1]
+											input(type='checkbox', name='topics', value= t_elem[0], checked)
+										else
+											input(type='checkbox', name='topics', value= t_elem[0])
+										| ##{t_elem[0]} Updates<br>
+						tr
+							td.cellCenter(colspan='2')
+								input(type='submit', value='Set Notifications')
+			td
+
+		tr
+			td
+			td.cellCenter(colspan='2')
+				h3 #{user}'s last messages
+			td
+
+		each elem in tweets
+			tr
+				td.west
+				td.left
+					div.data
+						| #{elem.date}<br><br>
+						| <strong>Feeling:</strong> ##{elem.feeling}<br>
+						| <strong>Topic:</strong> ##{elem.topic}
+				td.right
+					div.balloon= elem.text
+				td.east

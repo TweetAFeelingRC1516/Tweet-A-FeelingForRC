@@ -1,0 +1,112 @@
+#userBox {
+	float: right;
+    clear: right;
+    background-color: #edf0f7;
+    border: 3px solid #3399ff;
+    border-radius: 6px;
+    padding: 5px;
+    margin-bottom: 2px;
+	text-align: center;
+}
+#userBox:hover {
+    background-color: #dde3f0;
+    border: 3px solid #3333ff;	
+}
+
+.headerForm {
+    display: inline;
+}
+
+#spacer {
+    border: none;
+    height: 3px;
+}
+
+#notifNum {
+    display: inline;
+    border: 1px solid red;
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
+#logout {
+    background-color: #a0a0a0;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+#logout:hover {
+    background-color: #ff0000;
+    transform: scale(1.05, 1.05);
+}
+
+input[type=submit] {
+    background-color: #3399ff;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+input[type=submit]:hover {
+    background-color: #3333ff;
+    transform: scale(1.05, 1.05);
+}
+
+input[type=reset] {
+    background-color: #cc0000;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+input[type=reset]:hover {
+    background-color: #ff0000;
+    transform: scale(1.05, 1.05);
+}
+
+#back {
+    background-color: #00BB00;/*#3399ff;*/
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+#back:hover {
+    background-color: #007700;
+    transform: scale(1.05, 1.05);
+}
+
+select {
+    border: none;
+    border-radius: 4px;
+    padding: 3px 10px;
+    background-color: #d6d6d6;
+}
+select option {
+    background-color: #f2f2f2;
+}
+
+#chartsMenu {
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.left {
+    width: 35%;
+   /* border: 2px dotted red;*/
+    text-align: center;
+}
+
+.right {
+    width: 65%;
+    /*border: 2px dotted orange;*/
+}

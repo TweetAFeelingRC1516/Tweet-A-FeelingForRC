@@ -1,0 +1,33 @@
+{
+  "name": "tweet-a-feeling",
+  "version": "1.0.0",
+  "description": "progetto per esame di reti di calcolatori, a.a. 2015/16",
+  "main": "tweet-a-feeling.js",
+  "scripts": {
+    "start": "node tweet-a-feeling.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "directories": {},
+  "keywords": [
+    "twitter",
+    "RC",
+    "feelings",
+    "topics",
+    "La Sapienza",
+    "Reti di Calcolatori"
+  ],
+  "author": "Fabio Gius, Andrea Pasciucco, Giuseppe D'Alpino",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "amqplib": "^0.4.1",
+    "body-parser": "^1.15.0",
+    "connect-mongo": "^1.1.0",
+    "crypto": "0.0.3",
+    "express": "^4.13.4",
+    "express-session": "^1.13.0",
+    "jade": "^1.11.0",
+    "oauth-percent-encode": "^0.1.2",
+    "request": "^2.69.0"
+  },
+  "repository": "TweetAFeelingRC1516/Tweet-A-FeelingForRC"
+}

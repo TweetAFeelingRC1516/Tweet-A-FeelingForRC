@@ -1,0 +1,56 @@
+extends header
+
+block content
+	div#userBox
+		| <strong>Username:</strong> #{user} <br>
+		form.headerForm(action='/_profile', method='get'): input(type='submit', value='profile')
+		| &nbsp;
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_tweets', method='get'): input(type='submit', value='Tweets')
+		| &nbsp;
+		form.headerForm(action='/_userlist', method='get'): input(type='submit', value='Userlist')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_main', method='get'): input#back(type='submit', value='<- back')
+		| &nbsp;
+		form.headerForm(action='/_notifications', method='get'): input(type='submit', value='Notifications')
+		| &nbsp;
+		h4#notifNum= n_count
+
+	table(border='1')
+		tr
+			td#chartsMenu(colspan='2')
+				form(action='/_charts', method='post', enctype='application/x-www-form-urlencoded')
+					select(required, name='page')
+						option(value='') -----
+						option(value='pie') Pie Charts
+						option(value='bar') Bar Charts
+						option(value='allpieFeelings') Pie Charts (Each Feeling's Topics - global)
+						option(value='mypieFeelings') Pie Charts (Each Feeling's Topics - #{user})
+						option(value='allpieTopics') Pie Charts (Each Topic's Feelings - global)
+						option(value='mypieTopics') Pie Charts (Each Topic's Feelings - #{user})
+						option(value='allbarFeelings') Bar Charts (Each Feeling's Most Used Words - global)
+						option(value='mybarFeelings') Bar Charts (Each Feeling's Most Used Words - #{user})
+						option(value='allbarTopics') Bar Charts (Each Topic's Most Used Words - global)
+						option(value='mybarTopics') Bar Charts (Each Topic's Most Used Words - #{user})
+
+					| <br>
+					div#spacer
+					div#spacer
+					input(type='submit', value='Go to Charts Page')
+					| &nbsp;&nbsp;&nbsp;
+					input(type='reset')
+				div#spacer
+				div#spacer
+				div#spacer
+				div#spacer
+				div#spacer
+
+		each elem in charts
+			tr
+				td.left
+					div.data
+				td.right
+					img(src= elem)

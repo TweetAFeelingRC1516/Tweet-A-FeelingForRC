@@ -1,0 +1,16 @@
+# Ignora skel-Consumer_k-S.json
+skel-Consumer_K-S.json
+
+# Ignora la cartella node_modules
+# node_modules/
+
+# Ignora files git
+.git*
+
+# Ignora readme.md
+readme.md
+
+#Ignora files docker
+.dockerignore
+Dockerfile
+docker-compose.yml

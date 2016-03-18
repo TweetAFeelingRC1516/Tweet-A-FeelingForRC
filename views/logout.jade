@@ -1,0 +1,10 @@
+extends header
+
+block content
+	table
+		tr
+			td
+				div#balloon
+					| Logged out successfully.<br><br>
+					a(href='/')
+					form#headerForm(action='/', method='get'): input(type='submit', value='Go back to Login Page')
