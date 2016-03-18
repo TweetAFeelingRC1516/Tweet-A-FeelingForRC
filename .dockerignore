@@ -2,7 +2,7 @@
 skel-Consumer_K-S.json
 
 # Ignora la cartella node_modules
-# node_modules/
+node_modules/
 
 # Ignora files git
 .git*
