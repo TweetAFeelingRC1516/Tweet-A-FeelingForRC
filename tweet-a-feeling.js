@@ -42,9 +42,9 @@ var HEADERS = {
 	'Content-Type': 'application/json',
 	'Accept': 'application/json'
 };
-var app = express();
 var EXCHANGE = 'notifications';
 var MAX_LENGTH = 123;
+var app = express();
 app.set('view engine', 'jade');
 
 var genSessionSecret = function() {
@@ -275,9 +275,8 @@ var checkChart = function(chart) {
 	chart_arr = chart.split('-');
 	if(chart_arr.length > 2)
 		return false;
-	else if(chart_arr.length === 1) {
+	else if(chart_arr.length === 1)
 		return chart_arr[0] === 'Bar';
-	}
 	else {
 		if(chart_arr[0] !== 'Bar' && chart_arr[0] !== 'Pie')
 			return false;
@@ -988,7 +987,7 @@ app.get('/_charts', function(req, res) {
 
 app.post('/_charts', function(req, res) {
 	console.log('/_charts page');
-	//in case if inserting control 'typeof req.body.page !== undefined' then uncomment below
+	//in case of inserting control 'typeof req.body.page !== undefined' then uncomment below
 	var page = req.body.page;
 	console.log('Wanted page: ' + page);
 	//useless control? page arrives form our page (given nobody manually builds a message)
@@ -1464,9 +1463,10 @@ app.post('/_userlist', function(req, res) {
 			return;
 		}
 		var body_json = JSON.parse(body);
-		if(body_json.result === 'error') {
+		/*if(body_json.result === 'error') {
 			res.sendStatus(400);
-		}
+			return;
+		}*/
 		var chart = body_json.message;
 		var users_body = {
 			apiCode: req.session.apiCode,
@@ -1485,14 +1485,14 @@ app.post('/_userlist', function(req, res) {
 			var body_json = JSON.parse(body);
 			var userlist = body_json.message;
 			res.render('userlist', { title: '~ Tweet-A-Userlist ~',
-									stylesheet: 'userlist.css',
-									author: AUTHORS,
-									user: req.session.user,
-									userlist: userlist,
-									feelings: FEELINGS,
-									topics: TOPICS,
-									chart: chart,
-									n_count: req.session.notifications.length } );
+										stylesheet: 'userlist.css',
+										author: AUTHORS,
+										user: req.session.user,
+										userlist: userlist,
+										feelings: FEELINGS,
+										topics: TOPICS,
+										chart: chart,
+										n_count: req.session.notifications.length } );
 		} );
 	} );
 } );
@@ -1527,7 +1527,7 @@ app.get('/logout', function(req, res) {
 										author: AUTHORS,
 										destination: '/',
 										text: 'Logged out successfully.',
-										button: 'Go back to Login Page' } );
+										button: 'Go to Login Page' } );
 			}
 			else {
 				console.log('Error in sending update request to Orion: not logged out');
@@ -1560,7 +1560,7 @@ app.post('/api/sendTweet', function(req, res) {
 		console.log('Exit because Feeling and/or Topic properties are wrong');
 		return;
 	}
-	//no newline in tweet -> replacing with space
+	//no newline allowed in tweet text -> replacing with space
 	var text_base = req.body.tweet.replace(/\r\n/g, " ");
 	if(text_base > MAX_LENGTH) {
 		res.json( { result: 'error',
@@ -1832,38 +1832,30 @@ app.post('/api/getTweets', function(req, res) {
 		var switch_value;
 		if(typeof req.body.author !== 'undefined') {
 			if(typeof req.body.feeling !== 'undefined') {
-				if(typeof req.body.topic !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined')
 					switch_value = 0;
-				}
-				else {
+				else
 					switch_value = 1;
-				}
 			}
 			else {
-				if(typeof req.body.topic !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined')
 					switch_value = 2;
-				}
-				else {
+				else
 					switch_value = 3;
-				}
 			}
 		}
 		else {
 			if(typeof req.body.feeling !== 'undefined') {
-				if(typeof req.body.topic !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined')
 					switch_value = 4;
-				}
-				else {
+				else
 					switch_value = 5;
-				}
 			}
 			else {
-				if(typeof req.body.topic !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined')
 					switch_value = 6;
-				}
-				else {
+				else
 					switch_value = 7;
-				}
 			}
 		}
 		all_tweets = createTweetsList(tweetsFromQuery);
@@ -2142,7 +2134,8 @@ var sendPie = function(scope, res, user, code, chart) {
 					if(all_tweets[i].feeling === FEELINGS[j])
 						numFeeling[j]++;
 				}
-			}for(var i = 0; i < FEELINGS.length; i++) {
+			}
+			for(var i = 0; i < FEELINGS.length; i++) {
 				chart_data = chart_data.concat(numFeeling[i]).concat(',');
 				chart_legend = chart_legend.concat(FEELINGS[i] + '+=+' + numFeeling[i]).concat('|');
 			}
@@ -2274,7 +2267,6 @@ var sendBar = function(scope, res, user, code, chart) {
 		var chart_legPos = 'chdlp=b';
 		chart_color = 'chco=4D89F9,00CC00';
 		var scope_arr = scope.split('%');
-		console.log(scope_arr);
 		chart_title = chart_title.concat('|').concat(scope_arr[0]).concat('+vs.+').concat(scope_arr[1]);
 		var tw_body0 = {
 			apiCode: code,
@@ -2336,7 +2328,7 @@ var sendBar = function(scope, res, user, code, chart) {
 				var dataset_arr0 = [];
 				for(var key in dataset0)
 					dataset_arr0.push([key, dataset0[key]]); // {'k': 'v'} -> ['k', 'v']
-					dataset_arr0.sort(function(a, b) {
+				dataset_arr0.sort(function(a, b) {
 					return b[1] - a[1];
 				} );
 				if(dataset_arr0.length === 0) {
@@ -2349,7 +2341,7 @@ var sendBar = function(scope, res, user, code, chart) {
 				var dataset_arr1 = [];
 				for(var key in dataset1)
 					dataset_arr1.push([key, dataset1[key]]); // {'k': 'v'} -> ['k', 'v']
-					dataset_arr1.sort(function(a, b) {
+				dataset_arr1.sort(function(a, b) {
 					return b[1] - a[1];
 				} );
 				if(dataset_arr1.length === 0) {
@@ -2487,9 +2479,8 @@ app.delete('/api/setNotifications', function(req, res) {
 			if(!emptyObject(notif_toUpdate.feelings)) {
 				for(var i = 0; i < req.body.feelings.length; i++) {
 					for(var j = 0; j < notif_toUpdate.feelings.length; j++) {
-						if(req.body.feelings[i] === notif_toUpdate.feelings[j]) {
+						if(req.body.feelings[i] === notif_toUpdate.feelings[j])
 							notif_toUpdate.feelings.splice(j, 1);
-						}
 					}
 				}
 			}
@@ -2498,9 +2489,8 @@ app.delete('/api/setNotifications', function(req, res) {
 			if(!emptyObject(notif_toUpdate.topics)) {
 				for(var i = 0; i < req.body.topics.length; i++) {
 					for(var j = 0; j < notif_toUpdate.topics.length; j++) {
-						if(req.body.topics[i] === notif_toUpdate.topics[j]) {
+						if(req.body.topics[i] === notif_toUpdate.topics[j])
 							notif_toUpdate.topics.splice(j, 1);
-						}
 					}
 				}
 			}
@@ -2536,16 +2526,14 @@ app.delete('/api/setNotifications', function(req, res) {
 					var queue = req.body.user.concat('_queue');
 					ch.assertQueue(queue);					
 					//unsetting only new 'un'-bindings
-					if(typeof req.body.feelings !== 'undefined') {
+					if(typeof req.body.feelings !== 'undefined')
 						req.body.feelings.forEach(function(key) {
 							ch.unbindQueue(queue, EXCHANGE, key.concat('.').concat('*'));
 						} );
-					}
-					if(typeof req.body.topics !== 'undefined') {
+					if(typeof req.body.topics !== 'undefined')
 						req.body.topics.forEach(function(key) {
 							ch.unbindQueue(queue, EXCHANGE, '*.'.concat(key));
 						} );
-					}
 				} );
 				setTimeout(function() {
 					conn.close();
@@ -2690,16 +2678,14 @@ app.post('/api/setNotifications', function(req, res) {
 					ch.assertQueue(queue);
 					
 					//setting only new bindings, no all bindings (notif_toUpdate contains new AND old)
-					if(typeof req.body.feelings !== 'undefined') {
+					if(typeof req.body.feelings !== 'undefined')
 						req.body.feelings.forEach(function(key) {
 							ch.bindQueue(queue, EXCHANGE, key.concat('.').concat('*'));
 						} );
-					}
-					if(typeof req.body.topics !== 'undefined') {
+					if(typeof req.body.topics !== 'undefined')
 						req.body.topics.forEach(function(key) {
 							ch.bindQueue(queue, EXCHANGE, '*.'.concat(key));
 						} );
-					}
 				} );
 				setTimeout(function() {
 					conn.close();
