@@ -1,0 +1,9 @@
+extends header
+
+block content
+	table
+		tr
+			td
+				div#balloon
+					| #{text} <br><br>
+					form#headerForm(action= destination, method='get'): input(type='submit', value= button)

@@ -737,8 +737,12 @@ app.get('/return', function(req, res) {
 										req.session.user = user;
 										req.session.notifications = [];
 										req.session.avatar = avatar;
-										console.log(USERS);
-										res.redirect('/_main');
+										res.render('message', { title: '~ Tweet-A-LoggedIn ~',
+																stylesheet: 'message.css',
+																author: AUTHORS,
+																destination: '/_main',
+																text: 'Logged in successfully.',
+																button: 'Go to Main Page' } );
 									}
 									else {
 										console.log('Error while inserting user into Orion.');
@@ -792,7 +796,12 @@ app.get('/return', function(req, res) {
 									req.session.user = user;
 									req.session.notifications = [];
 									req.session.avatar = avatar;
-									res.redirect('/_main');
+									res.render('message', { title: '~ Tweet-A-LoggedIn ~',
+															stylesheet: 'message.css',
+															author: AUTHORS,
+															destination: '/_main',
+															text: 'Logged in successfully.',
+															button: 'Go to Main Page' } );
 								}
 								else {
 									console.log('Error updating user in Orion.')
@@ -1513,9 +1522,12 @@ app.get('/logout', function(req, res) {
 			if(typeof JSON.parse(body).contextResponses !== 'undefined') {
 				console.log(req.session.user + ' has logged out...');
 				req.session.destroy();
-				res.render('logout', { title: '~ Tweet-A-Userlist ~',
-										stylesheet: 'logout.css',
-										author: AUTHORS } );
+				res.render('message', { title: '~ Tweet-A-Logout ~',
+										stylesheet: 'message.css',
+										author: AUTHORS,
+										destination: '/',
+										text: 'Logged out successfully.',
+										button: 'Go back to Login Page' } );
 			}
 			else {
 				console.log('Error in sending update request to Orion: not logged out');
