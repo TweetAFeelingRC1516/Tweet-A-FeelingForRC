@@ -2676,7 +2676,6 @@ app.post('/api/setNotifications', function(req, res) {
 					ch.assertExchange(EXCHANGE, 'topic');
 					var queue = req.body.user.concat('_queue');
 					ch.assertQueue(queue);
-					
 					//setting only new bindings, no all bindings (notif_toUpdate contains new AND old)
 					if(typeof req.body.feelings !== 'undefined')
 						req.body.feelings.forEach(function(key) {
