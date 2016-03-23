@@ -1,0 +1,37 @@
+extends header
+
+block content
+	h2 Information about what do Tweet a Feeling : 
+	table
+		tr
+			td
+				div#balloon
+					| This application shows charts about tweets sent through it. 
+					br
+					| You write a tweet setting your #FEELING and #TOPIC. 
+					br
+					| Having done that, we show you different types of charts, 
+					br
+					| confronting used words or counting #FEELINGs and #TOPICs.
+	br
+	div
+		div 
+			div#feeling.des
+				| List of feelings:
+				ul#ulicon  
+					li Happy
+					li Sad 
+					li Mad
+					li Bored
+					li Tired
+					li Hopeful
+					li Worried
+			| &nbsp;
+			div#topic.des
+				| List of topics:
+				ul#ulicon
+					li Study
+					li Work
+					li Sport
+					li Hobby
+					li Health'

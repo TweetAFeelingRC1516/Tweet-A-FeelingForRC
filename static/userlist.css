@@ -1,0 +1,78 @@
+#userBox {
+	float: right;
+    clear: right;
+    background-color: #edf0f7;
+    border: 3px solid #3399ff;
+    border-radius: 6px;
+    padding: 5px;
+    margin-bottom: 2px;
+	text-align: center;
+}
+#userBox:hover {
+    background-color: #dde3f0;
+    border: 3px solid #3333ff;	
+}
+
+#logout {
+    background-color: #a0a0a0;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+#logout:hover {
+    background-color: #ff0000;
+    transform: scale(1.05, 1.05);
+}
+
+#back {
+    background-color: #00BB00;/*#3399ff;*/
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+#back:hover {
+    background-color: #007700;
+    transform: scale(1.05, 1.05);
+}
+
+.headerForm {
+    display: inline;
+}
+
+#spacer {
+    border: none;
+    height: 3px;
+}
+
+#notifNum {
+    display: inline;
+    border: 1px solid red;
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+input[type=submit] {
+    background-color: #3399ff;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    color: white;
+}
+input[type=submit]:hover {
+    background-color: #3333ff;
+    transform: scale(1.05, 1.05);
+}
+
+.cellCenter {
+    text-align: center;
+}

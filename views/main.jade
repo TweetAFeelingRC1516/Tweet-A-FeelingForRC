@@ -1,0 +1,71 @@
+extends header
+
+block content
+	div#userBox
+		| <strong>Username:</strong> #{user} <br>
+		form.headerForm(action='/_profile', method='get'): input(type='submit', value='profile')
+		| &nbsp;
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_tweets', method='get'): input(type='submit', value='Tweets')
+		| &nbsp;
+		form.headerForm(action='/_userlist', method='get'): input(type='submit', value='Userlist')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_charts', method='get'): input(type='submit', value='Charts')
+		| &nbsp;
+		form.headerForm(action='/_notifications', method='get'): input(type='submit', value='Notifications')
+		| &nbsp;
+		h4#notifNum= n_count
+	table
+		caption
+			h1 ~ Tweet-A-Feeling ~
+		tr
+			td#leftCell.cellRight: img(src='Twitter_icon_big.png', alt='Twitter icon', height='147', width='180')
+			
+			td#middleCell
+				form(action='/_buildTweet', method='post', enctype='application/x-www-form-urlencoded')
+					div#balloon
+						table
+							tr
+								td
+									textarea(required, rows='5', cols='40', name='tweet', maxlength='123', placeholder='Write your tweet here...')
+								td
+									table
+										tr
+											td.cellCenter Feeling:
+											td.cellCenter
+												//- N.B. required attribute NOT supported by Safari
+												select(required, name='feeling')
+													option(value='') -----
+													each f_elem in feelings
+														option(value= f_elem) #{f_elem}
+										tr
+											td.cellCenter Topic:
+											td.cellCenter
+												select(required, name='topic')
+													option(value='') -----
+													each t_elem in topics
+														option(value= t_elem) #{t_elem}
+										tr
+											td.cellCenter(colspan='2')
+												input(type='submit', value='Tweet')
+												| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+												input(type='reset')
+			td#rightCell
+		tr
+			td.cellCenter(colspan='3')
+				h2 Last Tweets:
+
+		each elem in tweets
+			tr
+				td.west
+					div.data
+						| #{elem.date}<br>
+						| <strong>Author:</strong> #{elem.author}<br><br>
+						| <strong>Feeling:</strong> ##{elem.feeling}<br>
+						| <strong>Topic:</strong> ##{elem.topic}
+				td.n-s
+					div.tweets= elem.text
+				td.east

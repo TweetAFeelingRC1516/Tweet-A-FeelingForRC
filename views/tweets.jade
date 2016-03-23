@@ -1,0 +1,43 @@
+extends header
+
+block content
+	div#userBox
+		| <strong>Username:</strong> #{user} <br>
+		form.headerForm(action='/_profile', method='get'): input(type='submit', value='profile')
+		| &nbsp;
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_main', method='get'): input#back(type='submit', value='<- back')
+		| &nbsp;
+		form.headerForm(action='/_userlist', method='get'): input(type='submit', value='Userlist')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_charts', method='get'): input(type='submit', value='Charts')
+		| &nbsp;
+		form.headerForm(action='/_notifications', method='get'): input(type='submit', value='Notifications')
+		| &nbsp;
+		h4#notifNum= n_count
+	table
+		caption
+			h1 ~ Tweet-A-Feeling ~
+
+		tr
+			td.cellCenter(colspan='3')
+				h2 All Tweets:
+
+		each elem in tweets
+			tr
+				td.west
+					div.data
+						| #{elem.date}<br>
+						| <strong>Author:</strong> #{elem.author}<br><br>
+						| <strong>Feeling:</strong> ##{elem.feeling}<br>
+						| <strong>Topic:</strong> ##{elem.topic}
+				td.n-s
+					div.tweets= elem.text
+				td.east
+					if user === elem.author
+						form.headerForm(action='/_tweets', method='post')
+							input#delete(type='submit', value='Delete Tweet')
+							input(type='hidden', name='id', value= elem.id)

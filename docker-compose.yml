@@ -1,0 +1,23 @@
+tweetafeeling:
+   build: .
+   ports:
+      - "4242:4242"
+   links:
+      - orion
+      - rabbitmq
+      - mongo
+
+orion:
+   image: fiware/orion
+   links:
+      - mongo
+   command: -dbhost mongo
+
+mongo:
+   image: mongo:2.6
+   command: --smallfiles --nojournal
+
+rabbitmq:
+   image: rabbitmq:3-management
+   ports:
+      - "15672:15672"

@@ -1,0 +1,24 @@
+extends header
+
+block content
+	div
+		h1 Tweet-A-Feeling
+
+		div#login
+			div
+				// /whatIS#tweets
+				a(href='/whatIS')
+					div#logoLeft.beside
+						| How I <strong>#FEEL</strong><br>about <strong>#WHAT</strong>
+				div#logoTwitter.beside: img(src='Twitter_icon_big.png', alt='Twitter icon', height='147', width='180')
+				// /whatIS#graphs
+				a(href='/whatIS')
+					div#logoRight.beside
+						| Tweet it here,<br>visualize it,<br>find how others feel.
+			form(action='/login', method='get')
+				br
+				input#loginButton(type='submit', value='Login with Twitter')
+		
+		div
+			a(href='/about')
+				div#loginFooter <strong>Authors:</strong> #{author}

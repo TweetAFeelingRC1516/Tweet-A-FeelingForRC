@@ -1,0 +1,13 @@
+{
+	"api": "http://127.0.0.1:4242/api",
+	"oauth_callback": "http://127.0.0.1:4242/return",
+	"twitter_login_redirect": "https://api.twitter.com/oauth/authenticate",
+	"oauth_req_token": "https://api.twitter.com/oauth/request_token",
+	"oauth_acc_token": "https://api.twitter.com/oauth/access_token",
+	"verify_credentials": "https://api.twitter.com/1.1/account/verify_credentials.json",
+	"tweet": "https://api.twitter.com/1.1/statuses/update.json",
+	"destroy_tweet": "https://api.twitter.com/1.1/statuses/destroy/",
+	"orion_updateContext": "http://orion:1026/v1/updateContext",
+	"orion_queryContext": "http://orion:1026/v1/queryContext",
+	"charts": "http://chart.googleapis.com/chart"
+}

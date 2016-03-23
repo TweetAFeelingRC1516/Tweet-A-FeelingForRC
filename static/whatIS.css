@@ -1,0 +1,40 @@
+div, h2 {
+    text-align: center;
+}
+
+table {
+    margin-left: 430px;
+}
+
+#balloon {
+    border: 3px solid #3399ff;
+    border-radius: 12px;
+    display: inline-block;
+    padding: 10px;
+}
+
+.des {
+    width: 100px;
+    display: inline-block;
+    border: 3px solid #3399ff;
+    border-radius: 6px;
+    padding: 5px;
+    margin: 0px 15px;
+}
+#feeling {
+    border: 3px solid #3333ff; 
+    background-color: #ccddff;
+    transform: scale(1.05, 1.05);  
+}
+
+#topic {
+    border: 3px solid #3333ff; 
+    background-color: #ccddff;
+    transform: scale(1.05, 1.05); 
+    vertical-align: top; 
+}
+
+#ulicon {
+    list-style-image: url('Twitter_icon.png'); 
+    text-align: left;
+}

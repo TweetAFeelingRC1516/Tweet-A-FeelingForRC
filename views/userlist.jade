@@ -1,0 +1,44 @@
+extends header
+
+block content
+	div#userBox
+		| <strong>Username:</strong> #{user} <br>
+		form.headerForm(action='/_profile', method='get'): input(type='submit', value='profile')
+		| &nbsp;
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_tweets', method='get'): input(type='submit', value='Tweets')
+		| &nbsp;
+		form.headerForm(action='/_main', method='get'): input#back(type='submit', value='<- back')
+		| <br>
+		div#spacer
+		form.headerForm(action='/_charts', method='get'): input(type='submit', value='Charts')
+		| &nbsp;
+		form.headerForm(action='/_notifications', method='get'): input(type='submit', value='Notifications')
+		| &nbsp;
+		h4#notifNum= n_count
+	table
+		if chart
+			tr
+				td.cellCenter(colspan='2'): img(src= chart)
+		tr
+			td.cellCenter(colspan='2')
+				h2 ~ Userlist ~
+
+		each elem in userlist
+			tr
+				td= elem
+				td
+					if elem != user
+						form(action='_userlist', method='post')
+							input(type='hidden', name='scope', value='#{user}%#{elem}', enctype='application/x-www-form-urlencoded')
+							select(required, name='chart')
+								option(value='') -----
+								option(value='Bar') All
+								each f_elem in feelings
+									option(value='Bar-#{f_elem}') #{f_elem}
+								each t_elem in topics
+									option(value='Bar-#{t_elem}') #{t_elem}
+							| &nbsp;&nbsp;
+							input(type='submit', value='Compare Words')
