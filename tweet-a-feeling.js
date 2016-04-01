@@ -1,23 +1,3 @@
-/*	Tweet-A-Feeling ~ Project for RC class
-	Copyright (C) 2016  Fabio Gius, Andrea Pasciucco, Giuseppe D'Alpino
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-var LICENSE = '\tTweet-A-Feeling  Copyright (C) 2016  Fabio Gius, Andrea Pasciucco, Giuseppe D\'Alpino\n\tThis program comes with ABSOLUTELY NO WARRANTY.\n\tThis is free software, and you are welcome to redistribute it\n\tunder certain conditions';
-console.log(LICENSE);
-
 var express = require('express');
 var session = require('express-session');
 var mongoStore = require('connect-mongo')(session);
@@ -32,19 +12,21 @@ var URLS = require('./urls.json');
 var CONS_KEY = KS.cons_key;
 var CONS_SECRET = KS.cons_secret;
 var AUTHORS = 'Fabio Gius, Andrea Pasciucco, Giuseppe D\'Alpino';
-var FORBIDDEN_PAGES = ['/_main', '/_profile', '/_buildTweet', '/_charts', '/_userlist', '/_tweets', '/_notifications'];
-var API_PAGES = ['/sendTweet', '/delTweet', '/getTweets', '/getUsers', '/getDataset', '/getChart', '/setNotifications', '/getNotifications'];
+var FORBIDDEN_PAGES = ['/_main', '/_profile', '/_buildTweet', '/_charts', '/_userlist', '/_tweets', '/_notifications']; //For determining whether send a 401 (is here) or a 404 (isn't here)
+var API_PAGES = ['/sendTweet', '/getTweets', '/getUsers', '/getDataset', '/getChart', '/setNotifications', '/getNotifications'];
 var FEELINGS = ['Happy', 'Sad', 'Mad', 'Bored', 'Tired', 'Hopeful', 'Worried'];
-var TOPICS = ['Study', 'Work', 'Love', 'Sport', 'Hobby', 'Health'];
+var TOPICS = ['Study', 'Work', 'Sport', 'Hobby', 'Health'];
 var USERS = [];
 var CHARTS_PAGES = ['pie', 'bar', 'allpieFeelings', 'mypieFeelings', 'allpieTopics', 'mypieTopics', 'allbarFeelings', 'mybarFeelings', 'allbarTopics', 'mybarTopics'];
-var HEADERS = {
+var ORION_HEADERS = {
 	'Content-Type': 'application/json',
 	'Accept': 'application/json'
 };
-var EXCHANGE = 'notifications';
-var MAX_LENGTH = 123;
+
 var app = express();
+
+var EXCHANGE = 'notifications';
+
 app.set('view engine', 'jade');
 
 var genSessionSecret = function() {
@@ -72,7 +54,7 @@ app.use(session( {
 		https://github.com/expressjs/session/blob/master/README.md#resave
 		https://github.com/kcbanner/connect-mongo#lazy-session-update
 	*/
-	resave: false,
+	resave: true,
 	/*		SAVE UNINITIALIZED (explicit to remove warning at startup)
 		TRUE:   Forces a new "empty" (not yet modified) session to be saved in store (DEFAULT)
 		FALSE:  The opposite, stores session first time when modified
@@ -96,6 +78,7 @@ app.use(session( {
 
 app.use(express.static(__dirname + '/static'));
 
+//checks if there's an occurence of elem in array
 var checkInArray = function(elem) {
 	return elem == this;
 }
@@ -104,8 +87,8 @@ app.use('/_\*', function(req, res, next) {
 	console.log('checking \"_\*\" ...');
 	if(!FORBIDDEN_PAGES.some(checkInArray, req.baseUrl)) {
 		res.status(404).render('404', { title: 'Oh no, not again...',
-										stylesheet: '40x.css',
-										author: AUTHORS } );
+							stylesheet: '40x.css',
+							author: AUTHORS } );
 		return;
 	}
 	var user = req.session.user;
@@ -119,31 +102,32 @@ app.use('/_\*', function(req, res, next) {
 										author: AUTHORS });
 		return;
 	}
-	if(req.baseUrl === '/_buildTweet') {
+	if(req.baseUrl == '/_buildTweet') {
 		next();
 		return;
 	}
+
 	var notifs = [];
 	var tw_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
 	request.post( {
-		url: URLS.api.concat('/getNotifications'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getNotifications',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(tw_body)
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error sending \"getNotifications\" request');
-			res.sendStatus(500);
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var body_json = JSON.parse(body);
 		var notifs = body_json.message;
 		for(var i = 0; i < notifs.length; i++) {
 			notifs[i].date = notifs[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
 			req.session.notifications.push(notifs[i]);
 		}
+		//console.log('$£$£$£$£$£$£$£$£ req.session.notifications of %s', req.session.user);
+		//console.log(req.session.notifications);
 		next();
 	} );
 } );
@@ -171,52 +155,60 @@ app.use('/api/\*', function(req, res, next) {
 		console.log('Exit for wrong \"user\" property');
 		return;
 	}
+	var codeSent = req.body.apiCode;
+	var isLogged_str,
+		isLogged,
+		accToken,
+		accTokenS;
 	var objStoreQuery_elements = [];
 	objStoreQuery_elements.push(createOrionQueryElement('User', 'false', userSent));
 	objStoreQuery_body = createOrionQueryBody(objStoreQuery_elements);
 
 	request.post( {
-		headers: HEADERS,
+		headers: ORION_HEADERS,
 		url: URLS.orion_queryContext,
 		body: JSON.stringify(objStoreQuery_body)
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t check data' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var queryRes = JSON.parse(body);
 		if(typeof queryRes.contextResponses !== 'undefined') {
 			var queryResAttr = queryRes.contextResponses[0].contextElement.attributes;
-			var codeSent = req.body.apiCode;
-			var isLogged,
-				accToken,
-				accTokenS;
 			for(var i = 0; i < queryResAttr.length; i++) {
-				if(queryResAttr[i].name === 'apiCode') {
-					if (queryResAttr[i].value !== codeSent) {
+				if(queryResAttr[i].name == 'apiCode') {
+					if (queryResAttr[i].value != codeSent) {
 						res.json( { result: 'error',
 									message: '-apiCode- doesn\'t match -user-' } );
 						console.log('Exit for api code not right');
 						return;
 					}
 				}
-				if(queryResAttr[i].name === 'logged')
-					isLogged = queryResAttr[i].value;
-				if(queryResAttr[i].name === 'Access_Token')
+				if(queryResAttr[i].name == 'logged')
+					isLogged_str = queryResAttr[i].value;
+				if(queryResAttr[i].name == 'Access_Token')
 					accToken = queryResAttr[i].value;
-				if(queryResAttr[i].name === 'Access_Token_S')
+				if(queryResAttr[i].name == 'Access_Token_S')
 					accTokenS = queryResAttr[i].value;
 			}
-			if(isLogged !== 'true') {
+			if(isLogged_str == 'true')
+				isLogged = true;
+			else if(isLogged_str == 'false')
+				isLogged = false;
+			else {
+				res.json( { result: 'error',
+							message: 'Could not determinate if Logged in or not.' } );
+				console.log('Exit for uncertain login state'); //other actions? (es: req.session.destroy() )
+				return;
+			}
+
+			if(!isLogged) {
 				res.json( { result: 'error',
 							message: 'Not Logged. Login via web browser and retry.' } );
 				console.log('Exit because user isn\'t logged in');
-				return;
 			}
 			else {
-				if(api === '/sendTweet' || api === '/delTweet') {
+				if(api == '/sendTweet') {
 					var dataSent = {
 						'accToken': accToken,
 						'accTokenS': accTokenS
@@ -235,11 +227,13 @@ app.use('/api/\*', function(req, res, next) {
 	} );
 } );
 
-// FUNZIONI AUSILIARIE
+//funzioni ausiliarie
+
 var emptyObject = function(obj) {
 	return (Object.getOwnPropertyNames(obj).length === 0);
 };
 
+//api code
 var genApiCode = function(user) {
 	var sequence = crypto.randomBytes(4);
 	var code = sequence.toString('hex');
@@ -247,16 +241,22 @@ var genApiCode = function(user) {
 };
 
 var checkApiRequiredFields = function(param) {
-	return !(typeof param.body.user === 'undefined' || typeof param.body.apiCode  === 'undefined');
+	if(typeof param.body.user === 'undefined' || typeof param.body.apiCode  === 'undefined')
+		return false;
+	return true;
 };
 
 var checkSendTweetFields = function(param) {
-	return !(typeof param.body.feeling === 'undefined' || typeof param.body.topic === 'undefined' ||
-		typeof param.body.tweet === 'undefined');
+	if(typeof param.body.feeling === 'undefined' || typeof param.body.topic === 'undefined' ||
+		typeof param.body.tweet === 'undefined')
+		return false;
+	return true;
 };
 
 var checkGetChartFields = function(param) {
-	return !(typeof param.body.chart === 'undefined' || typeof param.body.scope === 'undefined');
+	if(typeof param.body.chart === 'undefined' || typeof param.body.scope === 'undefined')
+		return false;
+	return true;
 };
 
 var checkFeeling = function(feeling) {
@@ -273,66 +273,97 @@ var checkUser = function(user) {
 
 var checkChart = function(chart) {
 	chart_arr = chart.split('-');
-	if(chart_arr.length > 2)
+	if(chart_arr.lengh > 2)
 		return false;
-	else if(chart_arr.length === 1)
-		return chart_arr[0] === 'Bar';
+	else if(chart_arr.length == 1) {
+		if(chart_arr[0] == 'Bar')
+			return true;
+		return false;
+	}
 	else {
 		if(chart_arr[0] !== 'Bar' && chart_arr[0] !== 'Pie')
 			return false;
 		if(!checkTopic(chart_arr[1]) && !checkFeeling(chart_arr[1]) && chart_arr[1] !== 'Feelings' && chart_arr[1] !== 'Topics')
 			return false;
-		return true;
 	}
+	return true;
 };
 
 var checkHashTags = function(feeling, topic) {
-	return !(!checkFeeling(feeling) || !checkTopic(topic));
+	if(!checkFeeling(feeling) || !checkTopic(topic))
+		return false;
+	return true;
 };
 
 var checkCompareScope = function(scope) {
 	var arr = scope.split('%');
-	if(arr.length !== 2)
+	if(arr.length != 2)
 		return false;
 	if(!checkUser(arr[0]) || !checkUser(arr[1]))
 		return false;
-	if(arr[0] === arr[1])
+	if(arr[0] == arr[1])
 		return false;
 	return true;
 }
 
 var checkSetNotif = function(param) {
-	return !(typeof param.feelings === 'undefined' && typeof param.topics === 'undefined');
+	if(typeof param.feelings === 'undefined' && typeof param.topics === 'undefined')
+		return false;
+	return true;
 }
+
+//refine this funcion
+//include all symbols
+//include accented letters
+//include articles and the likes
+//include single-letter words
+var cleanMessage = function(text) {
+	var result = ' '.concat(text).concat(' ');
+	result = result.replace(/\(| un'| l'| gliel'|\)/g, " ");
+	result = result.replace(/\(|\?|\,|\.|:|\;|\(|\)|\'|\"|\=|\!|\^|\/|\\|\<|\>|\_|\)/g, " ");
+	result = result.replace(/\(| il | lo | la | gli | le | the | ma | but | se | it |\)/g, " ");
+	result = result.replace(/\(| di | da | in | con | su | per | tra | fra | of | with | on |\)/g, " ");
+	result = result.replace(/\(| del | dello | della | degli | delle |\)/g, " ");
+	result = result.replace(/\(| al | allo | alla | agli | alle |\)/g, " ");
+	result = result.replace(/\(| dal | dallo | dalla | dagli | dalle |\)/g, " ");
+	result = result.replace(/\(| sul | sullo | sulla | sugli | sulle |\)/g, " ");
+	result = result.replace(/\(| è | é | un | uno | una | an | is | or |\)/g, " ");
+	result = result.replace(/ [a-z] /g, " ").replace(/ [a-z] /g, " ");
+	result = result.replace(/\(| questo | questa | questi | queste |\)/g, " ");
+	result = result.replace(/\(| quello | quella | quelli | quelle |\)/g, " ");
+	result = result.replace(/\(| this | these | that | those |\)/g, " ");
+	//result = result.replace(/[0-9]/g, " ");
+	//result = result.replace(/\(|£ |\$ |€ | - |\)/g, " ");
+	//console.log(result);
+	return result;
+};
 
 var createTweetsList = function(list) {
 	var result = [];
 	for(var i = 0; i < list.length; i++) {
 		var list_attr = list[i].contextElement.attributes;
-		var temp_id = list[i].contextElement.id;
 		var temp_date,
 			temp_author,
 			temp_text,
 			temp_feeling,
 			temp_topic;
 		for(var j = 0; j < list_attr.length; j++) {
-			if(list_attr[j].name === 'date')
+			if(list_attr[j].name == 'date')
 				temp_date = list_attr[j].value;
-			if(list_attr[j].name === 'feeling')
+			if(list_attr[j].name == 'feeling')
 				temp_feeling = list_attr[j].value;
-			if(list_attr[j].name === 'text') {
+			if(list_attr[j].name == 'text') {
 				temp_text = list_attr[j].value;
 				// using html notation for forbidden characters in Orion -> restore original message
 				temp_text = temp_text.replace(/&lt/g, "<").replace(/&gt/g, ">").replace(/&quot/g, "\"").replace(/&#39/g, "\'");
 				temp_text = temp_text.replace(/&#61/g, "=").replace(/&#59/g, ";").replace(/&#40/g, "(").replace(/&#41/g, ")").replace(/&#92/g, "\\");
 			}
-			if(list_attr[j].name === 'topic')
+			if(list_attr[j].name == 'topic')
 				temp_topic = list_attr[j].value;
-			if(list_attr[j].name === 'author')
+			if(list_attr[j].name == 'author')
 				temp_author = list_attr[j].value;
 		}
 		var single_tweet = {
-			id: temp_id,
 			date: temp_date,
 			author: temp_author,
 			text: temp_text,
@@ -344,50 +375,32 @@ var createTweetsList = function(list) {
 	return result;
 }
 
-//refine this funcion: include all symbols, include accented letters
-var cleanMessage = function(text) {
-	var result = ' '.concat(text).concat(' ');
-	result = result.replace(/\(| un'| l'| gliel'|\)/g, " ");
-	result = result.replace(/\(|\?|\,|\.|:|\;|\(|\)|\'|\"|\=|\!|\^|\/|\\|\<|\>|\_|#|@|\)/g, " ");
-	result = result.replace(/\(| il | lo | la | gli | le | the | ma | but | se | it |\)/g, " ");
-	result = result.replace(/\(| di | da | in | con | su | per | tra | fra | of | with | on |\)/g, " ");
-	result = result.replace(/\(| del | dello | della | degli | delle |\)/g, " ");
-	result = result.replace(/\(| al | allo | alla | agli | alle |\)/g, " ");
-	result = result.replace(/\(| dal | dallo | dalla | dagli | dalle |\)/g, " ");
-	result = result.replace(/\(| sul | sullo | sulla | sugli | sulle |\)/g, " ");
-	result = result.replace(/\(| è | é | un | uno | una | an | is | or |\)/g, " ");
-	result = result.replace(/ [a-z] /g, " ").replace(/ [a-z] /g, " ");
-	result = result.replace(/\(| questo | questa | questi | queste |\)/g, " ");
-	result = result.replace(/\(| quello | quella | quelli | quelle |\)/g, " ");
-	result = result.replace(/\(| this | these | that | those | if | else | for | in | out |\)/g, " ");
-	//result = result.replace(/[0-9]/g, " ");
-	//result = result.replace(/\(|£ |\$ |€ | - |\)/g, " ");
-	return result;
-};
-
 var genDataset = function(messages) {
 	var res = {};
 	for(var i = 0; i < messages.length; i++) {
 		var bare_mess = cleanMessage(messages[i].toLowerCase());
 		var bare_arr = bare_mess.split(' ');
 		for(var j = 0; j < bare_arr.length; j++) {
-			if(typeof res[bare_arr[j]] === 'undefined')
+			if(typeof res[bare_arr[j]] == 'undefined')
 				res[bare_arr[j]] = 1;
 			else
 				res[bare_arr[j]] += 1;
 		}
 	}
 	delete res[''];
+
 	return res;
 };
 
+//generate timestamp
 var genTimestamp = function() {
 	return parseInt(Date.now()/1000);
 };
 
+//generate nonce
 var genNonce = function() {
 	var sequence = crypto.randomBytes(16);
-	var nonce = sequence.toString('hex'); //good enough for us, but it will only have a-f lower case letters
+	var nonce = sequence.toString('hex'); //abbastanza buono, ma le lettere sono limitate ad a-f minuscole
 	return nonce;
 };
 
@@ -412,25 +425,82 @@ var genParamArray = function(nonce, timestamp) {
 	return [cons_key_s, nonce_s, sign_method_s, timestamp_s, version_s];
 }
 
-//generate a signature for generic REST calls
-var genOauthSign = function(reqMethod, url, nonce, timestamp, more, token_secret) {
-	var method = reqMethod;
+//generate a signature for 'Request Token' request
+var genOauthRTSign = function(url, callback_url, nonce, timestamp) {
+	var method = 'POST';
 	var url_enc = encodeURIComponent(url);
 
+	var callback_k = encodeURIComponent('oauth_callback');
+	var callback_v = callback_url
+	var callback_s = callback_k.concat('=').concat(callback_v);
+	
 	var paramArray = genParamArray(nonce, timestamp);
-	for(var i = 0; i < more.length; i++) {
-		var more_k = encodeURIComponent(more[i][0]);
-		if(more[i][0] === 'status')
-			var more_v = more[i][1];
-		else
-			var more_v = encodeURIComponent(more[i][1]);
-		paramArray.push(more_k.concat('=').concat(more_v));
-	}
+	paramArray.push(callback_s);
 	paramArray.sort();
 
 	var paramString = paramArray.join('&');
 	var paramString_enc = encodeURIComponent(paramString);
+
 	var signBase_Str = method.concat('&').concat(url_enc).concat('&').concat(paramString_enc);
+
+	var signKey = encodeURIComponent(CONS_SECRET).concat('&');
+	
+	var hmac = crypto.createHmac('sha1', signKey).update(signBase_Str);
+	var res = hmac.digest('base64');
+	return res;
+};
+
+//generate a signature for 'Access Token' request
+var genOauthATSign = function(url, verifier, nonce, timestamp, token, token_secret) {
+	var method = 'POST';
+	var url_enc = encodeURIComponent(url);
+
+	var oauth_token_k = encodeURIComponent('oauth_token');
+	var oauth_token_v = encodeURIComponent(token);
+	var oauth_token_s = oauth_token_k.concat('=').concat(oauth_token_v);
+	var verifier_k = encodeURIComponent('oauth_verifier');
+	var verifier_v = encodeURIComponent(verifier);
+	var verifier_s = verifier_k.concat('=').concat(verifier_v);
+
+	var paramArray = genParamArray(nonce, timestamp);
+	paramArray.push(oauth_token_s);
+	paramArray.push(verifier_s);
+	paramArray.sort();
+
+	var paramString = paramArray.join('&');
+	var paramString_enc = encodeURIComponent(paramString);
+
+	var signBase_Str = method.concat('&').concat(url_enc).concat('&').concat(paramString_enc);
+
+	var signKey = encodeURIComponent(CONS_SECRET).concat('&').concat(encodeURIComponent(token_secret));
+	
+	var hmac = crypto.createHmac('sha1', signKey).update(signBase_Str);
+	var res = hmac.digest('base64');
+	return res;
+};
+
+//generate a signature for Tweet REST calls
+var genOauthTweetSign = function(url, status, nonce, timestamp, token, token_secret) {
+	var method = 'POST';
+	var url_enc = encodeURIComponent(url);
+
+	var oauth_token_k = encodeURIComponent('oauth_token');
+	var oauth_token_v = encodeURIComponent(token);
+	var oauth_token_s = oauth_token_k.concat('=').concat(oauth_token_v);
+	var status_k = encodeURIComponent('status');
+	var status_v = status; //already URI encoded!
+	var status_s = status_k.concat('=').concat(status_v);
+
+	var paramArray = genParamArray(nonce, timestamp);
+	paramArray.push(oauth_token_s);
+	paramArray.push(status_s);
+	paramArray.sort();
+
+	var paramString = paramArray.join('&');
+	var paramString_enc = encodeURIComponent(paramString);
+
+	var signBase_Str = method.concat('&').concat(url_enc).concat('&').concat(paramString_enc);
+
 	var signKey = encodeURIComponent(CONS_SECRET).concat('&').concat(encodeURIComponent(token_secret));
 	
 	var hmac = crypto.createHmac('sha1', signKey).update(signBase_Str);
@@ -438,36 +508,86 @@ var genOauthSign = function(reqMethod, url, nonce, timestamp, more, token_secret
 	return res;
 }
 
-//generates value of 'Authorization' field in HTTP header
-var genAuthString = function(nonce, signature, timestamp, more) {
-	var params = [];
+//generate a signature for generic REST calls
+var genOauthSign = function(reqMethod, url, nonce, timestamp, token, token_secret) {
+	var method = reqMethod;
+	var url_enc = encodeURIComponent(url);
+
+	var oauth_token_k = encodeURIComponent('oauth_token');
+	var oauth_token_v = encodeURIComponent(token);
+	var oauth_token_s = oauth_token_k.concat('=').concat(oauth_token_v);
+
+	var paramArray = genParamArray(nonce, timestamp);
+	paramArray.push(oauth_token_s);
+	paramArray.sort();
+
+	var paramString = paramArray.join('&');
+	var paramString_enc = encodeURIComponent(paramString);
+
+	var signBase_Str = method.concat('&').concat(url_enc).concat('&').concat(paramString_enc);
+
+	var signKey = encodeURIComponent(CONS_SECRET).concat('&').concat(encodeURIComponent(token_secret));
+	
+	var hmac = crypto.createHmac('sha1', signKey).update(signBase_Str);
+	var res = hmac.digest('base64');
+	return res;
+}
+
+//used by below function, generates partial value of 'Authorization' field in HTTP header
+var genAuthSubString = function(nonce, signature, timestamp) {
 	var consKey_Str_k = encodeURIComponent('oauth_consumer_key');
 	var consKey_Str_v = encodeURIComponent(CONS_KEY);
-	params.push(consKey_Str_k.concat('=\"').concat(consKey_Str_v).concat('\"'));
+	var consKey_Str_s = consKey_Str_k.concat('=\"').concat(consKey_Str_v).concat('\"');
 	var nonce_Str_k = encodeURIComponent('oauth_nonce');
 	var nonce_Str_v = encodeURIComponent(nonce);
-	params.push(nonce_Str_k.concat('=\"').concat(nonce_Str_v).concat('\"'));
+	var nonce_Str_s = nonce_Str_k.concat('=\"').concat(nonce_Str_v).concat('\"');
 	var signature_Str_k = encodeURIComponent('oauth_signature');
 	var signature_Str_v = encodeURIComponent(signature);
-	params.push(signature_Str_k.concat('=\"').concat(signature_Str_v).concat('\"'));
+	var signature_Str_s = signature_Str_k.concat('=\"').concat(signature_Str_v).concat('\"');
 	var sign_meth_Str_k = encodeURIComponent('oauth_signature_method');
 	var sign_meth_Str_v = encodeURIComponent('HMAC-SHA1');
-	params.push(sign_meth_Str_k.concat('=\"').concat(sign_meth_Str_v).concat('\"'));
+	var sign_meth_Str_s = sign_meth_Str_k.concat('=\"').concat(sign_meth_Str_v).concat('\"');
 	var timestamp_Str_k = encodeURIComponent('oauth_timestamp');
 	var timestamp_Str_v = encodeURIComponent(timestamp);
-	params.push(timestamp_Str_k.concat('=\"').concat(timestamp_Str_v).concat('\"'));
+	var timestamp_Str_s = timestamp_Str_k.concat('=\"').concat(timestamp_Str_v).concat('\"');
 	var version_Str_k = encodeURIComponent('oauth_version');
 	var version_Str_v = encodeURIComponent('1.0');
-	params.push(version_Str_k.concat('=\"').concat(version_Str_v).concat('\"'));
-	var more_k = encodeURIComponent(more[0]);
-	var more_v = encodeURIComponent(more[1]);
-	params.push(more_k.concat('=\"').concat(more_v).concat('\"'));
-	params.sort();
+	var version_Str_s = version_Str_k.concat('=\"').concat(version_Str_v).concat('\"');
 
-	var res1 = 'OAuth ';
-	var res2 = params.join(', ');
-	return res1.concat(res2);
+	return [consKey_Str_s, nonce_Str_s, signature_Str_s, sign_meth_Str_s, timestamp_Str_s, version_Str_s];
 }
+
+//generates the value of 'Authorization' field in twitter's REST HTTP header's "Request Token" call
+var genAuthStringRT = function(callback_url, nonce, signature, timestamp) {
+	var res1 = 'OAuth ';
+
+	var callback_Str_k = encodeURIComponent('oauth_callback');
+	var callback_Str_v = callback_url;
+	var callback_Str_s = callback_Str_k.concat('=\"').concat(callback_Str_v).concat('\"');
+
+	var res2 = genAuthSubString(nonce, signature, timestamp);
+	res2.push(callback_Str_s);
+	res2.sort(); //probably not necessary, just in case
+	res2 = res2.join(', ');
+
+	return res1.concat(res2);
+};
+
+//generates value of 'Authorization' field in HTTP header
+var genAuthString = function(nonce, signature, timestamp, token) {
+	var res1 = 'OAuth ';
+
+	var oauth_token_k = encodeURIComponent('oauth_token');
+	var oauth_token_v = encodeURIComponent(token);
+	var oauth_token_s = oauth_token_k.concat('=\"').concat(oauth_token_v).concat('\"');
+
+	var res2 = genAuthSubString(nonce, signature, timestamp);
+	res2.push(oauth_token_s);
+	res2.sort(); //probably not necessary, just in case
+	res2 = res2.join(', ');
+	
+	return res1.concat(res2);
+};
 
 // attribute to be inserted in object to be stored in orion
 var createOrionAttribute = function(attrName, attrType, attrValue) {
@@ -515,7 +635,7 @@ var createOrionQueryBody = function(elements) {
 	return body;
 };
 
-// ROUTING FUNCTIONS
+//prima pagina: richiesta login
 app.get('/', function(req, res) {
 	if(typeof req.session.user !== 'undefined')
 		res.redirect('/_main');
@@ -536,7 +656,9 @@ app.get('/42', function(req, res) {
 app.get('/whatIS', function(req, res) {
 	res.render('whatIS', { title: '~ Tweet-A-what-IS-this? ~',
 							stylesheet: 'whatIS.css',
-							author: AUTHORS } );
+							author: AUTHORS,
+							feelings: FEELINGS,
+						    topics: TOPICS, } );
 } );
 
 app.get('/about', function(req, res) {
@@ -555,44 +677,46 @@ app.get('/login', function(req, res) {
 		res.redirect('/');
 	}
 	else {
-		console.log("Pagina di login");	
-		var rt_url = URLS.oauth_req_token;
-		var rt_nonce = genNonce();
-		var rt_timestamp = genTimestamp();
-		var params = [['oauth_callback', URLS.oauth_callback]];
-		var rt_signature = genOauthSign('POST', rt_url, rt_nonce, rt_timestamp, params, '');
-		var rt_authString = genAuthString(rt_nonce, rt_signature, rt_timestamp, ['oauth_callback', URLS.oauth_callback]);
-		var rt_headers = {'Authorization': rt_authString };
-
-		request.post( {
-			headers: rt_headers,
-			url: rt_url
-		}, function(error, response, body) {
-			if(error) {
-				console.log('Error sending request (Request Token)');
-				res.sendStatus(500);
-				return;
-			}
-			if(body.substring(2,8) === 'errors') {
-				console.log('Error returned from Twitter');
-				res.sendStatus(500);
-				return;
-			}
-			var body_Arr = body.split('&');
-			var token_Arr = body_Arr[0].split('=');
-			var token_secret_Arr = body_Arr[1].split('=');
-			req.session.tokenR = token_Arr[1];
-			req.session.secretR = token_secret_Arr[1];
-
-			var redirect = URLS.twitter_login_redirect.concat('?');
-			redirect = redirect.concat('oauth_token=').concat(req.session.tokenR);
-			redirect = redirect.concat('&').concat('force_login=true');
-			console.log('redirecting to Twitter...');
-			res.redirect(redirect);
+		console.log("Pagina di login");
+	
+			var rt_url = URLS.oauth_req_token;
+			var callback_url = encodeURIComponent(URLS.oauth_callback);
+			var rt_nonce = genNonce();
+			var rt_timestamp = genTimestamp();
+			var rt_signature = genOauthRTSign(rt_url, callback_url, rt_nonce, rt_timestamp);
+			var rt_authString = genAuthStringRT(callback_url, rt_nonce, rt_signature, rt_timestamp);
+			var rt_headers = {'Authorization': rt_authString };
+	
+			request.post( {
+				headers: rt_headers,
+				url: rt_url
+			}, function(error, response, body) {
+				if(error) {
+					console.log('Error sending request');
+					res.sendStatus(500);
+					return;
+				}
+				if(body.substring(2,8) === 'errors') {
+					console.log('Error from Twitter');
+					res.sendStatus(500);
+					return;
+				}
+				var body_Arr = body.split('&');
+				var token_Arr = body_Arr[0].split('=');
+				var token_secret_Arr = body_Arr[1].split('=');
+				req.session.tokenR = token_Arr[1];
+				req.session.secretR = token_secret_Arr[1];
+	
+				var redirect = URLS.twitter_login_redirect.concat('?');
+				redirect = redirect.concat('oauth_token=').concat(req.session.tokenR);
+				redirect = redirect.concat('&').concat('force_login=true');
+				console.log('redirecting...');
+				res.redirect(redirect);
 		} );
 	}
 } );
 
+//Request Token obtained, converting into Access Token and obtaining Username
 app.get('/return', function(req, res) {
 	// already logged
 	if(typeof req.session.user !== 'undefined')
@@ -604,7 +728,8 @@ app.get('/return', function(req, res) {
 	else if(typeof req.session.tokenR === 'undefined')
 		res.redirect('/');
 	else {
-		console.log('Login effettuato, conversione \"Request Token\" in \"Access Token\"');	
+		console.log('Login effettuato, conversione \"Request Token\" in \"Access Token\"');
+	
 		if(typeof req.query.denied !== 'undefined') {
 			req.session.destroy();
 			res.redirect('/');
@@ -612,22 +737,20 @@ app.get('/return', function(req, res) {
 		}
 		else {
 			var at_oauth_token = req.query.oauth_token;
-			if(at_oauth_token !== req.session.tokenR) {
+			if(at_oauth_token != req.session.tokenR) {
 				req.session.destroy();
 				res.redirect('/');
 				return;
 			}
 			var at_oauth_verifier = req.query.oauth_verifier;	
+	
 			var at_url = URLS.oauth_acc_token;
 			var at_nonce = genNonce();
 			var at_timestamp = genTimestamp();
-			var params = [];
-			params.push(['oauth_token', req.session.tokenR]);
-			params.push(['oauth_verifier', at_oauth_verifier]);
-			var at_signature = genOauthSign('POST', at_url, at_nonce, at_timestamp, params, req.session.secretR);
-			var at_authString = genAuthString(at_nonce, at_signature, at_timestamp, ['oauth_token', req.session.tokenR]);
+			var at_signature = genOauthATSign(at_url, at_oauth_verifier, at_nonce, at_timestamp, req.session.tokenR, req.session.secretR);
+			var at_authString = genAuthString(at_nonce, at_signature, at_timestamp, req.session.tokenR);
 			var at_headers = {'Authorization': at_authString,
-								'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
+							 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
 			var at_body = 'oauth_verifier='.concat(at_oauth_verifier);
 	
 			request.post( {
@@ -636,13 +759,13 @@ app.get('/return', function(req, res) {
 				body: at_body
 			}, function(error, response, body) {
 				if(error) {
-					console.log('Error sending request (Access Token)');
+					console.log('Error sending request');
 					req.session.destroy();
 					res.sendStatus(500);
 					return;
 				}
 				if(body.substring(2,8) === 'errors') {
-					console.log('Error returned from Twitter');
+					console.log('Error from Twitter');
 					req.session.destroy();
 					res.sendStatus(500);
 					return;
@@ -656,9 +779,8 @@ app.get('/return', function(req, res) {
 				var verify_cred_url = URLS.verify_credentials;
 				var cred_nonce = genNonce();
 				var cred_timestamp = genTimestamp();
-				var params = [['oauth_token', req.session.token]];
-				var cred_signature = genOauthSign('GET', verify_cred_url, cred_nonce, cred_timestamp, params, req.session.secret);
-				var cred_authString = genAuthString(cred_nonce, cred_signature, cred_timestamp, ['oauth_token', req.session.token]);
+				var cred_signature = genOauthSign('GET', verify_cred_url, cred_nonce, cred_timestamp, req.session.token, req.session.secret);
+				var cred_authString = genAuthString(cred_nonce, cred_signature, cred_timestamp, req.session.token);
 				var verify_cred_headers = {'Authorization': cred_authString };
 
 				request.get( {
@@ -666,7 +788,7 @@ app.get('/return', function(req, res) {
 					url: verify_cred_url
 				}, function(error, response, body) {
 					if(error) {
-						console.log('Error sending request (Verify Credentials)');
+						console.log('Error sending request');
 						req.session.destroy();
 						res.sendStatus(500);
 						return;
@@ -674,13 +796,13 @@ app.get('/return', function(req, res) {
 					var json_body = JSON.parse(body);
 
 					if(typeof json_body.errors !== 'undefined') {
-						console.log('Error returned from Twitter');
+						console.log('Error from Twitter');
+						console.log(json_body);
 						req.session.destroy();
 						res.sendStatus(500);
 						return;
 					}
 					var user = json_body.screen_name;
-					var avatar = json_body.profile_image_url;
 					console.log('***** Logged: ' + user + ' *****');
 
 					//user already in object store?
@@ -689,44 +811,50 @@ app.get('/return', function(req, res) {
 					objStoreQuery_body = createOrionQueryBody(objStoreQuery_elements);
 
 					request.post( {
-						headers: HEADERS,
+						headers: ORION_HEADERS,
 						url: URLS.orion_queryContext,
 						body: JSON.stringify(objStoreQuery_body)
 					}, function(error, response, body) {
 						if(error) {
-							console.log('Error sending query request to Orion');
+							console.log('Error querying Orion');
 							req.session.destroy();
 							res.sendStatus(500);
 							return;
 						}
 						var queryRes = JSON.parse(body);
 						if(typeof queryRes.contextResponses === 'undefined') {
-							if(queryRes.errorCode.code === '404') {
+							if(queryRes.errorCode.code == '404') {
 								console.log('***** ' + user + '\'s first login *****');
 								//no controllo già loggato, se è il primo login non può essere loggato altrove
 								//si presuppone no primo login contemporaneo da due browser diversi per lo stesso utente
-								var notif_w = { "feelings": [],
-												"topics": [] };
-								req.session.apiCode = genApiCode(user);
-
+								//adding user to object store with apicode
 								var objStoreUpdate_attributes = [];
+								//parametri createOrionAttribute: name, type, value
 								objStoreUpdate_attributes.push(createOrionAttribute('username', 'string', user));
 								objStoreUpdate_attributes.push(createOrionAttribute('logged', 'boolean', 'true'));
 								objStoreUpdate_attributes.push(createOrionAttribute('Access_Token', 'string', req.session.token));
 								objStoreUpdate_attributes.push(createOrionAttribute('Access_Token_S', 'string', req.session.secret));
-								objStoreUpdate_attributes.push(createOrionAttribute('notif_wanted', 'object', notif_w));								
-								objStoreUpdate_attributes.push(createOrionAttribute('apiCode', 'string', req.session.apiCode));
+
+								var notif_w = { "feelings": [],
+												"topics": [] };
+								objStoreUpdate_attributes.push(createOrionAttribute('notif_wanted', 'object', notif_w));
+
+								var apiCode = genApiCode(user);
+								req.session.apiCode = apiCode;
+								objStoreUpdate_attributes.push(createOrionAttribute('apiCode', 'string', apiCode));
 								var objStoreUpdate_elements = [];
+								//parametri createOrionElement: type, isPattern, id, Array of Attributes
 								objStoreUpdate_elements.push(createOrionElement('User', 'false', user, objStoreUpdate_attributes));
+								//parametri createOrionBody: Array of Elements, updateAction
 								var objStoreUpdate_body = createOrionBody(objStoreUpdate_elements, 'APPEND');
 	
 								request.post( {
-									headers: HEADERS,
+									headers: ORION_HEADERS,
 									url: URLS.orion_updateContext,
 									body: JSON.stringify(objStoreUpdate_body)
 								}, function(error, response, body) {
 									if(error) {
-										console.log('Error sending update request to Orion');
+										console.log('Error updating Orion');
 										req.session.destroy();
 										res.sendStatus(500);
 										return;
@@ -735,13 +863,8 @@ app.get('/return', function(req, res) {
 										USERS.push(user);
 										req.session.user = user;
 										req.session.notifications = [];
-										req.session.avatar = avatar;
-										res.render('message', { title: '~ Tweet-A-LoggedIn ~',
-																stylesheet: 'message.css',
-																author: AUTHORS,
-																destination: '/_main',
-																text: 'Logged in successfully.',
-																button: 'Go to Main Page' } );
+										console.log(USERS);
+										res.redirect('/_main');
 									}
 									else {
 										console.log('Error while inserting user into Orion.');
@@ -772,21 +895,25 @@ app.get('/return', function(req, res) {
 									return;
 								}
 							}
+							//updating user into object store
 							var objStoreUpdate_attributes = [];
+							//parametri createOrionAttribute: name, type, value
 							objStoreUpdate_attributes.push(createOrionAttribute('logged', 'boolean', 'true'));
 							objStoreUpdate_attributes.push(createOrionAttribute('Access_Token', 'string', req.session.token));
 							objStoreUpdate_attributes.push(createOrionAttribute('Access_Token_S', 'string', req.session.secret));
 							var objStoreUpdate_elements = [];
+							//parametri createOrionElement: type, isPattern, id, Array of Attributes
 							objStoreUpdate_elements.push(createOrionElement('User', 'false', user, objStoreUpdate_attributes));
+							//parametri createOrionBody: Array of Elements, updateAction
 							var objStoreUpdate_body = createOrionBody(objStoreUpdate_elements, 'UPDATE');
 
 							request.post( {
-								headers: HEADERS,
+								headers: ORION_HEADERS,
 								url: URLS.orion_updateContext,
 								body: JSON.stringify(objStoreUpdate_body)
 							}, function(error, response, body) {
 								if(error) {
-									console.log('Error sending update request to Orion');
+									console.log('Error updating Orion');
 									req.session.destroy();
 									res.sendStatus(500);
 									return;
@@ -794,13 +921,9 @@ app.get('/return', function(req, res) {
 								if(typeof JSON.parse(body).contextResponses !== 'undefined') {
 									req.session.user = user;
 									req.session.notifications = [];
-									req.session.avatar = avatar;
-									res.render('message', { title: '~ Tweet-A-LoggedIn ~',
-															stylesheet: 'message.css',
-															author: AUTHORS,
-															destination: '/_main',
-															text: 'Logged in successfully.',
-															button: 'Go to Main Page' } );
+								//	console.log('printing session:');
+								//	console.log(req.session);
+									res.redirect('/_main');
 								}
 								else {
 									console.log('Error updating user in Orion.')
@@ -819,24 +942,26 @@ app.get('/return', function(req, res) {
 
 app.get('/_main', function(req, res) {
 	console.log('/_main page');
+
 	var tw_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
 	request.post( {
-		url: URLS.api.concat('/getTweets'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getTweets',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(tw_body)
 	}, function(error, response, body) {
 		if(error) {
-			console.log('Error in sending \"getTweets\" request');
+			console.log('Error in sending request');
 			res.sendStatus(500);
 			return;
-		} //no check for error response: we know the request is well built, there should't be errors
+		}
 		var body_json = JSON.parse(body);
 		var tweets = body_json.message.slice(0, 20);
-		for(var i = 0; i < tweets.length; i++)
+		for(var i = 0; i < tweets.length; i++) {
 			tweets[i].date = tweets[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
+		}
 		res.render('main', { title: '~ Tweet-A-Feeling ~',
 								stylesheet: 'main.css',
 								author: AUTHORS,
@@ -850,24 +975,26 @@ app.get('/_main', function(req, res) {
 
 app.get('/_tweets', function(req, res) {
 	console.log('/_tweets page');
+
 	var tw_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
 	request.post( {
-		url: URLS.api.concat('/getTweets'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getTweets',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(tw_body)
 	}, function(error, response, body) {
 		if(error) {
-			console.log('Error in sending \"getTweets\" request');
+			console.log('Error in sending request');
 			res.sendStatus(500);
 			return;
 		}
 		var body_json = JSON.parse(body);
 		var tweets = body_json.message;
-		for(var i = 0; i < tweets.length; i++)
+		for(var i = 0; i < tweets.length; i++) {
 			tweets[i].date = tweets[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
+		}
 		res.render('tweets', { title: '~ Tweet-A-Feeling ~',
 								stylesheet: 'tweets.css',
 								author: AUTHORS,
@@ -879,71 +1006,24 @@ app.get('/_tweets', function(req, res) {
 	} );
 } );
 
-app.post('/_tweets', function(req, res) {
-	console.log('/_tweets page');
-	var del_body = {
-		apiCode: req.session.apiCode,
-		user: req.session.user,
-		id: req.body.id
-	};
-	request.del( {
-		url: URLS.api.concat('/delTweet'),
-		headers: HEADERS,
-		body: JSON.stringify(del_body)
-	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending \"delTweet\" request');
-			res.sendStatus(500);
-			return;
-		}
-		if(JSON.parse(body).result === 'success') {
-			var tw_body = {
-				apiCode: req.session.apiCode,
-				user: req.session.user
-			};
-			request.post( {
-				url: URLS.api.concat('/getTweets'),
-				headers: HEADERS,
-				body: JSON.stringify(tw_body)
-			}, function(error, response, body) {
-				if(error) {
-					console.log('Error in sending \"getTweets\" request');
-					res.sendStatus(500);
-					return;
-				}
-				var body_json = JSON.parse(body);
-				var tweets = body_json.message;
-				for(var i = 0; i < tweets.length; i++)
-					tweets[i].date = tweets[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
-				res.render('tweets', { title: '~ Tweet-A-Feeling ~',
-										stylesheet: 'tweets.css',
-										author: AUTHORS,
-										user: req.session.user,
-										tweets: tweets,
-										feelings: FEELINGS,
-										topics: TOPICS,
-										n_count: req.session.notifications.length } );
-			} );
-		}
-		else {
-			console.log('Error returned from API \"delTweet\"');
-			res.sendStatus(500);
-		}
-	} );
-} );
-
 app.get('/_notifications', function(req, res) {
 	console.log('/_notifications page');
-	var notifs = req.session.notifications.reverse();
+
+	var notifs = req.session.notifications;
 	req.session.notifications = [];
+
+	//console.log(notifs);
+	//console.log(req.session.notifications);
+
 	res.render('notifications', { title: '~ Tweet-A-Feeling ~',
-									stylesheet: 'notifications.css',
-									author: AUTHORS,
-									user: req.session.user,
-									notifs: notifs,
-									feelings: FEELINGS,
-									topics: TOPICS,
-									n_count: req.session.notifications.length } );
+							stylesheet: 'notifications.css',
+							author: AUTHORS,
+							user: req.session.user,
+							notifs: notifs,
+							feelings: FEELINGS,
+							topics: TOPICS,
+							n_count: req.session.notifications.length } );
+
 } );
 
 app.post('/_buildTweet', function(req, res) {
@@ -955,19 +1035,17 @@ app.post('/_buildTweet', function(req, res) {
 	sendTw_body['feeling'] = req.body.feeling;
 	sendTw_body['topic'] = req.body.topic;
 	request.post( {
-		url: URLS.api.concat('/sendTweet'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/sendTweet',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(sendTw_body)
 	}, function(error, response, body) {
 		if(error) {
-			console.log('Error in sending \"sendTweet\" request');
+			console.log('Error in sending tweet request');
 			res.sendStatus(500);
 			return;
 		}
 		body_json = JSON.parse(body);
-		//I check for errors: while the request is well built the text of the tweet
-		//may generate errors due to invalid characters
-		if(body_json.result === 'error') {
+		if(body_json.result == 'error') {
 			res.sendStatus(400);
 			return;
 		}
@@ -978,169 +1056,218 @@ app.post('/_buildTweet', function(req, res) {
 app.get('/_charts', function(req, res) {
 	console.log('/_charts page');
 	res.render('charts', { title: '~ Tweet-A-Charts ~',
-							stylesheet: 'charts.css',
-							author: AUTHORS,
-							user: req.session.user,
-							charts: [],
-							n_count: req.session.notifications.length } );
+								stylesheet: 'charts.css',
+								author: AUTHORS,
+								user: req.session.user,
+								charts: [],
+								n_count: req.session.notifications.length } );
 } );
 
 app.post('/_charts', function(req, res) {
 	console.log('/_charts page');
-	//in case of inserting control 'typeof req.body.page !== undefined' then uncomment below
+
+	//if I'll insert control 'typeof req.body.page !== undefined' then uncomment below
 	var page = req.body.page;
 	console.log('Wanted page: ' + page);
+
 	//useless control? page arrives form our page (given nobody manually builds a message)
 	//if(!CHARTS_PAGES.some(checkInArray, page)) {
 	//	res.sendStatus(400);
 	//	return;
 	//}
+
 	var chart_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user,
 		scope: '',
 		chart: ''
 	};
+
 	var charts = [];
 
 	var callChart = function(call_body, scope_arr, chart_arr, cont) {
 		console.log('***** ITERATION N° ' + cont + ' *****');
 		call_body['scope'] = scope_arr[cont];
 		call_body['chart'] = chart_arr[cont];
-
+		//console.log('/api/getChart BODY:');
+		//console.log(call_body);
 		request.post( {
-			url: URLS.api.concat('/getChart'),
-			headers: HEADERS,
+			url: 'http://127.0.0.1:4242/api/getChart',
+			headers: ORION_HEADERS,
 			body: JSON.stringify(call_body),
 		}, function(error, response, body) {
 			if(error) {
-				console.log('Error in sending \"getChart\" request');
+				console.log('Error in sending request');
 				res.sendStatus(500);
 				return;
 			}
 			var body_json = JSON.parse(body);
-			/*if(body_json.result === 'error') {
+			if(body_json.result === 'error') {
 				res.sendStatus(400);
 				return;
-			}*/
+			}
 			charts.push(body_json.message);
 
-			if(++cont < scope_arr.length)
+			if(++cont < scope_arr.length){
 				callChart(call_body, scope_arr, chart_arr, cont);
-			else
+			}
+			else {
 				res.render('charts', { title: '~ Tweet-A-Charts ~',
 										stylesheet: 'charts.css',
 										author: AUTHORS,
 										user: req.session.user,
 										charts: charts,
 										n_count: req.session.notifications.length } );
+			}
 		} );
 	};
+
 	var scopeArr = [];
 	var chartArr = [];
 
-	if(page === CHARTS_PAGES[0]) {
-		scopeArr = ['%%', '%%', req.session.user, req.session.user];
-		chartArr = ['Pie-Feelings', 'Pie-Topics', 'Pie-Feelings', 'Pie-Topics'];
+	if(page == CHARTS_PAGES[0]) {
+
+		var pie_scopeArr = ['%%', '%%', req.session.user, req.session.user];
+		var pie_chartArr = ['Pie-Feelings', 'Pie-Topics', 'Pie-Feelings', 'Pie-Topics'];
+
+		callChart(chart_body, pie_scopeArr, pie_chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[1]) {
-		scopeArr = ['%%', req.session.user];
-		chartArr = ['Bar', 'Bar'];
+
+	if(page == CHARTS_PAGES[1]) {
+
+		var bar_scopeArr = ['%%', req.session.user];
+		var bar_chartArr = ['Bar', 'Bar'];
+
+		callChart(chart_body, bar_scopeArr, bar_chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[2]) {
+
+	if(page == CHARTS_PAGES[2]) {		
+
 		for(var i = 0; i < FEELINGS.length; i++) {
 			var chartElem = 'Pie-'.concat(FEELINGS[i]);
 			scopeArr.push('%%');
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[3]) {
+
+	if(page == CHARTS_PAGES[3]) {
+
 		for(var i = 0; i < FEELINGS.length; i++) {
 			var chartElem = 'Pie-'.concat(FEELINGS[i]);
 			scopeArr.push(req.session.user);
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[4]) {
+
+	if(page == CHARTS_PAGES[4]) {
+
 		for(var i = 0; i < TOPICS.length; i++) {
 			var chartElem = 'Pie-'.concat(TOPICS[i]);
 			scopeArr.push('%%');
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[5]) {
+
+	if(page == CHARTS_PAGES[5]) {
+
 		for(var i = 0; i < TOPICS.length; i++) {
 			var chartElem = 'Pie-'.concat(TOPICS[i]);
 			scopeArr.push(req.session.user);
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[6]) {
+
+	if(page == CHARTS_PAGES[6]) {
+
 		for(var i = 0; i < FEELINGS.length; i++) {
 			var chartElem = 'Bar-'.concat(FEELINGS[i]);
 			scopeArr.push('%%');
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[7]) {
+
+	if(page == CHARTS_PAGES[7]) {
+
 		for(var i = 0; i < FEELINGS.length; i++) {
 			var chartElem = 'Bar-'.concat(FEELINGS[i]);
 			scopeArr.push(req.session.user);
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[8]) {
+
+	if(page == CHARTS_PAGES[8]) {
+
 		for(var i = 0; i < TOPICS.length; i++) {
 			var chartElem = 'Bar-'.concat(TOPICS[i]);
 			scopeArr.push('%%');
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	if(page === CHARTS_PAGES[9]) {
+
+	if(page == CHARTS_PAGES[9]) {
+
 		for(var i = 0; i < TOPICS.length; i++) {
 			var chartElem = 'Bar-'.concat(TOPICS[i]);
 			scopeArr.push(req.session.user);
 			chartArr.push(chartElem);
 		}
+
+		callChart(chart_body, scopeArr, chartArr, 0);
 	}
-	callChart(chart_body, scopeArr, chartArr, 0);
 } );
 
 app.get('/_profile', function(req, res) {
 	console.log(req.session.user + ' has requested his userpage...');
+	//get user tweets
 	var tw_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user,
 		author: req.session.user
 	};
 	request.post( {
-		url: URLS.api.concat('/getTweets'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getTweets',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(tw_body)
 	}, function(error, response, body) {
 		if(error) {
-			console.log('Error in sending \"getTweets\" request');
+			console.log('Error in sending request');
 			res.sendStatus(500);
 			return;
 		}
 		var body_json = JSON.parse(body);
-		/*if(body_json.result === 'error') {
+		if(body_json.result === 'error') {
 			res.sendStatus(400);
 			return;
-		}*/
+		}
 		var tweets = body_json.message.slice(0, 10);
-		for(var i = 0; i < tweets.length; i++)
+		for(var i = 0; i < tweets.length; i++) {
 			tweets[i].date = tweets[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
+		}
+
 		var queryUser_elements = [];
 		queryUser_elements.push(createOrionQueryElement('User', 'false', req.session.user));
 		queryUser_body = createOrionQueryBody(queryUser_elements);
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_queryContext,
 			body: JSON.stringify(queryUser_body)
 		}, function(error, response, body) {
 			if(error) {
-				console.log('Error in sending query request to Orion');
+				console.log('Error in sending request');
 				res.sendStatus(500);
 				return;
 			}
@@ -1155,7 +1282,7 @@ app.get('/_profile', function(req, res) {
 			var contextRes_attr = contextRes[0].contextElement.attributes;
 			var notif_settings;
 			for(var i = 0; i < contextRes_attr.length; i++) {
-				if(contextRes_attr[i].name === 'notif_wanted') {
+				if(contextRes_attr[i].name == 'notif_wanted') {
 					notif_settings = contextRes_attr[i].value;
 					break;
 				}
@@ -1171,22 +1298,24 @@ app.get('/_profile', function(req, res) {
 			for(var i = 0; i < FEELINGS.length; i++) {
 				var elem = [];
 				elem.push(FEELINGS[i]);
-				if(notif_feelings.length !== 0 && notif_feelings.some(checkInArray, FEELINGS[i]))
+				if(notif_feelings.length != 0 && notif_feelings.some(checkInArray, FEELINGS[i]))
 					elem.push(true);
 				else
 					elem.push(false);
 				feelings_list.push(elem);
 			}
+
 			var topics_list = [];
 			for(var i = 0; i < TOPICS.length; i++) {
 				var elem = [];
 				elem.push(TOPICS[i]);
-				if(notif_topics.length !== 0 && notif_topics.some(checkInArray, TOPICS[i]))
+				if(notif_topics.length != 0 && notif_topics.some(checkInArray, TOPICS[i]))
 					elem.push(true);
 				else
 					elem.push(false);
 				topics_list.push(elem);
 			}
+
 			res.render('profile', { title: '~ Tweet-A-Profile ~',
 									stylesheet: 'profile.css',
 									author: AUTHORS,
@@ -1195,7 +1324,6 @@ app.get('/_profile', function(req, res) {
 									tweets: tweets,
 									feelings: feelings_list,
 									topics: topics_list,
-									avatar: req.session.avatar,
 									n_count: req.session.notifications.length } );
 		} );
 	} );
@@ -1203,19 +1331,24 @@ app.get('/_profile', function(req, res) {
 
 app.post('/_profile', function(req, res) {
 	console.log(req.session.user + ' wants to update his notification settings...');
+	console.log(req.body);
+
 	var set_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
+
 	var unset_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
+
 	var tw_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user,
 		author: req.session.user
 	};
+
 	var setFeelings = [],
 		setTopics = [],
 		unsetFeelings = [],
@@ -1239,6 +1372,7 @@ app.post('/_profile', function(req, res) {
 			unset_body['feelings'] = unsetFeelings;
 		}
 	}
+
 	if(typeof req.body.topics === 'undefined') {
 		unsetTopics = TOPICS;
 		unset_body['topics'] = unsetTopics;
@@ -1257,53 +1391,66 @@ app.post('/_profile', function(req, res) {
 			unset_body['topics'] = unsetTopics;
 		}
 	}
+
 	var set_case;
 	if(setFeelings.length === 0 && setTopics.length === 0)
-		set_case = 0; //only unset
+		set_case = 0; //solo unset
 	else if(unsetFeelings.length === 0 && unsetTopics.length === 0)
-		set_case = 1; //only set
+		set_case = 1; //solo set
 	else
 		set_case = 3;
 	request.post( {
-		url: URLS.api.concat('/getTweets'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getTweets',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(tw_body)
 	}, function(error, response, body) {
 		if(error) {
-			console.log('Error in sending \"getTweets\" request');
+			console.log('Error in sending request');
 			res.sendStatus(500);
 			return;
 		}
 		var body_json = JSON.parse(body)
-		/*if(body_json.result === 'error') {
+		if(body_json.result === 'error') {
 			res.sendStatus(400);
 			return;
-		}*/
+		}
 		var tweets = body_json.message.slice(0, 10);
 		for(var i = 0; i < tweets.length; i++)
 			tweets[i].date = tweets[i].date.replace(/\+[0-9][0-9][0-9][0-9] /g, "");
+
 		switch (set_case) {
 			case 0:
 				request.del( {
-					url: URLS.api.concat('/setNotifications'),
-					headers: HEADERS,
+					url: 'http://127.0.0.1:4242/api/setNotifications',
+					headers: ORION_HEADERS,
 					body: JSON.stringify(unset_body)
 				}, function(error, response, body) {
 					if(error) {
-						console.log('Error in sending \"setNotifications\" request');
+						console.log('Error in sending request');
 						res.sendStatus(500);
 						return;
 					}
-					/*if(body_json.result === 'error') {
+					if(body_json.result === 'error') {
 						res.sendStatus(400);
 						return;
-					}*/
+					}
+
 					var feelings_list = [];
-					for(var i = 0; i < FEELINGS.length; i++)
-						feelings_list.push([FEELINGS[i], false]);
+					for(var i = 0; i < FEELINGS.length; i++) {
+						var elem = [];
+						elem.push(FEELINGS[i]);
+						elem.push(false);
+						feelings_list.push(elem);
+					}
+		
 					var topics_list = [];
-					for(var i = 0; i < TOPICS.length; i++)
-						topics_list.push([TOPICS[i], false]);
+					for(var i = 0; i < TOPICS.length; i++) {
+						var elem = [];
+						elem.push(TOPICS[i]);
+						elem.push(false);
+						topics_list.push(elem);
+					}
+
 					res.render('profile', { title: '~ Tweet-A-Profile ~',
 											stylesheet: 'profile.css',
 											author: AUTHORS,
@@ -1312,31 +1459,41 @@ app.post('/_profile', function(req, res) {
 											tweets: tweets,
 											feelings: feelings_list,
 											topics: topics_list,
-											avatar: req.session.avatar,
 											n_count: req.session.notifications.length } );
 				} );
 				break;
 			case 1:
 				request.post( {
-					url: URLS.api.concat('/setNotifications'),
-					headers: HEADERS,
+					url: 'http://127.0.0.1:4242/api/setNotifications',
+					headers: ORION_HEADERS,
 					body: JSON.stringify(set_body)
 				}, function(error, response, body) {
 					if(error) {
-						console.log('Error in sending \"setNotifications\" request');
+						console.log('Error in sending request');
 						res.sendStatus(500);
 						return;
 					}
-					/*if(body_json.result === 'error') {
+					if(body_json.result === 'error') {
 						res.sendStatus(400);
 						return;
-					}*/
+					}
+
 					var feelings_list = [];
-					for(var i = 0; i < FEELINGS.length; i++)
-						feelings_list.push([FEELINGS[i], true]);
+					for(var i = 0; i < FEELINGS.length; i++) {
+						var elem = [];
+						elem.push(FEELINGS[i]);
+						elem.push(true);
+						feelings_list.push(elem);
+					}
+		
 					var topics_list = [];
-					for(var i = 0; i < TOPICS.length; i++)
-						topics_list.push([TOPICS[i], true]);
+					for(var i = 0; i < TOPICS.length; i++) {
+						var elem = [];
+						elem.push(TOPICS[i]);
+						elem.push(true);
+						topics_list.push(elem);
+					}
+
 					res.render('profile', { title: '~ Tweet-A-Profile ~',
 											stylesheet: 'profile.css',
 											author: AUTHORS,
@@ -1345,14 +1502,13 @@ app.post('/_profile', function(req, res) {
 											tweets: tweets,
 											feelings: feelings_list,
 											topics: topics_list,
-											avatar: req.session.avatar,
 											n_count: req.session.notifications.length } );
 				} );
 				break;
 			case 3:
 				request.post( {
-					url: URLS.api.concat('/setNotifications'),
-					headers: HEADERS,
+					url: 'http://127.0.0.1:4242/api/setNotifications',
+					headers: ORION_HEADERS,
 					body: JSON.stringify(set_body)
 				}, function(error, response, body) {
 					if(error) {
@@ -1360,13 +1516,14 @@ app.post('/_profile', function(req, res) {
 						res.sendStatus(500);
 						return;
 					}
-					/*if(body_json.result === 'error') {
+					if(body_json.result === 'error') {
 						res.sendStatus(400);
 						return;
-					}*/
+					}
+
 					request.del( {
-						url: URLS.api.concat('/setNotifications'),
-						headers: HEADERS,
+						url: 'http://127.0.0.1:4242/api/setNotifications',
+						headers: ORION_HEADERS,
 						body: JSON.stringify(unset_body)
 					}, function(error, response, body) {
 						if(error) {
@@ -1374,30 +1531,33 @@ app.post('/_profile', function(req, res) {
 							res.sendStatus(500);
 							return;
 						}
-						/*if(body_json.result === 'error') {
+						if(body_json.result === 'error') {
 							res.sendStatus(400);
 							return;
-						}*/
+						}
+
 						var feelings_list = [];
 						for(var i = 0; i < FEELINGS.length; i++) {
 							var elem = [];
 							elem.push(FEELINGS[i]);
-							if(setFeelings.length !== 0 && setFeelings.some(checkInArray, FEELINGS[i]))
+							if(setFeelings.length != 0 && setFeelings.some(checkInArray, FEELINGS[i]))
 								elem.push(true);
 							else
 								elem.push(false);
 							feelings_list.push(elem);
-						}			
+						}
+			
 						var topics_list = [];
 						for(var i = 0; i < TOPICS.length; i++) {
 							var elem = [];
 							elem.push(TOPICS[i]);
-							if(setTopics.length !== 0 && setTopics.some(checkInArray, TOPICS[i]))
+							if(setTopics.length != 0 && setTopics.some(checkInArray, TOPICS[i]))
 								elem.push(true);
 							else
 								elem.push(false);
 							topics_list.push(elem);
 						}
+
 						res.render('profile', { title: '~ Tweet-A-Profile ~',
 												stylesheet: 'profile.css',
 												author: AUTHORS,
@@ -1406,7 +1566,6 @@ app.post('/_profile', function(req, res) {
 												tweets: tweets,
 												feelings: feelings_list,
 												topics: topics_list,
-												avatar: req.session.avatar,
 												n_count: req.session.notifications.length } );
 					} );
 				} );
@@ -1417,20 +1576,19 @@ app.post('/_profile', function(req, res) {
 
 app.get('/_userlist', function(req, res) {
 	console.log(req.session.user + ' has requested userlist page...');
+
 	var users_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user
 	};
 	request.post( {
-		url: URLS.api.concat('/getUsers'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getUsers',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(users_body)
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending \"getUsers\" request');
-			res.sendStatus(500);
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var body_json = JSON.parse(body);
 		var userlist = body_json.message;
 		res.render('userlist', { title: '~ Tweet-A-Userlist ~',
@@ -1446,53 +1604,50 @@ app.get('/_userlist', function(req, res) {
 
 app.post('/_userlist', function(req, res) {
 	console.log('Building compare chart...');
+
 	var chart_body = {
 		apiCode: req.session.apiCode,
 		user: req.session.user,
 		chart: req.body.chart,
 		scope: req.body.scope
 	};
+
 	request.post( {
-		url: URLS.api.concat('/getChart'),
-		headers: HEADERS,
+		url: 'http://127.0.0.1:4242/api/getChart',
+		headers: ORION_HEADERS,
 		body: JSON.stringify(chart_body),
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending \"getChart\" request');
-			res.sendStatus(500);
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var body_json = JSON.parse(body);
-		/*if(body_json.result === 'error') {
+		if(body_json.result == 'error') {
 			res.sendStatus(400);
-			return;
-		}*/
+		}
 		var chart = body_json.message;
 		var users_body = {
 			apiCode: req.session.apiCode,
 			user: req.session.user
 		};
 		request.post( {
-			url: URLS.api.concat('/getUsers'),
-			headers: HEADERS,
+			url: 'http://127.0.0.1:4242/api/getUsers',
+			headers: ORION_HEADERS,
 			body: JSON.stringify(users_body)
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending \"getUsers\" request');
-				res.sendStatus(500);
-				return;
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			var body_json = JSON.parse(body);
 			var userlist = body_json.message;
 			res.render('userlist', { title: '~ Tweet-A-Userlist ~',
-										stylesheet: 'userlist.css',
-										author: AUTHORS,
-										user: req.session.user,
-										userlist: userlist,
-										feelings: FEELINGS,
-										topics: TOPICS,
-										chart: chart,
-										n_count: req.session.notifications.length } );
+									stylesheet: 'userlist.css',
+									author: AUTHORS,
+									user: req.session.user,
+									userlist: userlist,
+									feelings: FEELINGS,
+									topics: TOPICS,
+									chart: chart,
+									n_count: req.session.notifications.length } );
 		} );
 	} );
 } );
@@ -1501,6 +1656,7 @@ app.get('/logout', function(req, res) {
 	if(typeof req.session.user === 'undefined')
 		res.redirect('/');
 	else {
+		//resetting user in object store
 		var objStore_attributes = [];
 		objStore_attributes.push(createOrionAttribute('logged', 'boolean', 'false'));
 		objStore_attributes.push(createOrionAttribute('Access_Token', 'string', ''));
@@ -1510,29 +1666,23 @@ app.get('/logout', function(req, res) {
 		var objStore_body = createOrionBody(objStore_elements, 'UPDATE');
 
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_updateContext,
 			body: JSON.stringify(objStore_body)
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending update request to Orion: not logged out');
-				res.sendStatus(500);
-				return;
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			if(typeof JSON.parse(body).contextResponses !== 'undefined') {
 				console.log(req.session.user + ' has logged out...');
 				req.session.destroy();
-				res.render('message', { title: '~ Tweet-A-Logout ~',
-										stylesheet: 'message.css',
-										author: AUTHORS,
-										destination: '/',
-										text: 'Logged out successfully.',
-										button: 'Go to Login Page' } );
+				res.send('Logged out.<br><a href=\"/\">Return to index</a>.');
 			}
 			else {
-				console.log('Error in sending update request to Orion: not logged out');
-				res.sendStatus(500);
-				return;
+				// logged out, but not updated in Orion! What to do?
+				// leave it as it is now, retry, or exit for error?
+				req.session.destroy();
+				res.send('Logged out.<br><a href=\"/\">Return to index</a>.');
 			}
 		} );
 	}
@@ -1560,37 +1710,25 @@ app.post('/api/sendTweet', function(req, res) {
 		console.log('Exit because Feeling and/or Topic properties are wrong');
 		return;
 	}
-	//no newline allowed in tweet text -> replacing with space
+	//no newline in tweet -> replacing with space
 	var text_base = req.body.tweet.replace(/\r\n/g, " ");
-	if(text_base > MAX_LENGTH) {
-		res.json( { result: 'error',
-					message: 'Message too long. Max length allowed: ' + MAX_LENGTH + ' characters.' } );
-		console.log('Exit because Message too long.');
-		return;
-	}
 	var text = text_base.concat(' #').concat(feeling).concat(' #').concat(topic);
 	var text_enc = percentEncode(text);
 	var tweet_baseUrl = URLS.tweet;
 	var tweet_Url = tweet_baseUrl.concat('?status=').concat(text_enc);
 	var tweet_nonce = genNonce();
 	var tweet_timestamp = genTimestamp();
-	var params = [];
-	params.push(['oauth_token', accToken]);
-	params.push(['status', text_enc]);
-	var tweet_signature = genOauthSign('POST', tweet_baseUrl, tweet_nonce, tweet_timestamp, params, accTokenS);
-	var tweet_authString = genAuthString(tweet_nonce, tweet_signature, tweet_timestamp, ['oauth_token', accToken]);
+	var tweet_signature = genOauthTweetSign(tweet_baseUrl, text_enc, tweet_nonce, tweet_timestamp, accToken, accTokenS);
+	var tweet_authString = genAuthString(tweet_nonce, tweet_signature, tweet_timestamp, accToken);
 	var tweet_headers = {'Authorization': tweet_authString };
 
 	request.post( {
 		headers: tweet_headers,
 		url: tweet_Url
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Twitter');
-			res.json( { result: 'error',
-						message: 'Couldn\'t send tweet to Twitter' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var resp = JSON.parse(body);
 		if(typeof resp.errors !== 'undefined') {
 			res.json( { result: 'error',
@@ -1615,39 +1753,45 @@ app.post('/api/sendTweet', function(req, res) {
 		var objStore_elements = [];
 		objStore_elements.push(createOrionElement('Message', 'false', mess_id, objStore_attributes));
 		var objStore_body = createOrionBody(objStore_elements, 'APPEND');
-
+	
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_updateContext,
 			body: JSON.stringify(objStore_body)
 		}, function(error, response, body) {
-			if(!error)
-				var objStore_bodyJson = JSON.parse(body);
-			//if there's an Orion error, we delete tweet from Twitter!
-			if(error || typeof objStore_bodyJson.contextResponses === 'undefined') {
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
+			var objStore_bodyJson = JSON.parse(body);
+			//if there's an Orion error, we delete tweet from Twitter itself!
+			if(typeof objStore_bodyJson.errorCode !== 'undefined') {
 				var destrTweet_url = URLS.destroy_tweet.concat(mess_id).concat('.json');
 				var destrTweet_nonce = genNonce();
 				var destrTweet_timestamp = genTimestamp();
-				var params = [['oauth_token', accToken]];
-				var destrTweet_signature = genOauthSign('POST', destrTweet_url, destrTweet_nonce, destrTweet_timestamp, params, accTokenS);
-				var destrTweet_authString = genAuthString(destrTweet_nonce, destrTweet_signature, destrTweet_timestamp, ['oauth_token', accToken]);
+				var destrTweet_signature = genOauthSign('POST', destrTweet_url, destrTweet_nonce, destrTweet_timestamp, accToken, accTokenS);
+				var destrTweet_authString = genAuthString(destrTweet_nonce, destrTweet_signature, destrTweet_timestamp, accToken);
 				var destrTweet_headers = {'Authorization': destrTweet_authString };
 				request.post( {
 					headers: destrTweet_headers,
 					url: destrTweet_url
 				}, function(error, response, body) {
-					if(!error)
-						var destrTweet_resp = JSON.parse(body);
-					if(!error && typeof destrTweet_resp.errors === 'undefined') {
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
+					var destrTweet_resp = JSON.parse(body);
+					if(typeof destrTweet_resp.errors === 'undefined') {
 						res.json( { result: 'error',
 									message: 'Message not sent. There was an error with Object Store.' } );
 						console.log('Exit because of an error returned by Object Store');
 						return;
 					}
-					res.json( { result: 'error',
-								message: 'Message `half` sent. It is on Twitter but was rejected by Object Store. Manually delete it on Twitter.' } );
-					console.log('Exit because of an error returned by Object Store first, and later by Twitter on delete attempt.');
-					return;
+					else {
+						res.json( { result: 'error',
+									message: 'Message `half` sent. It is on Twitter but was rejected by Object Store. Manually delete it on Twitter.' } );
+						console.log(destrTweet_resp.errors);
+						console.log('Exit because of an error returned by Object Store first, and later by Twitter on delete attempt.');
+						return;
+					}
 				} );
 			}
 			else {
@@ -1663,113 +1807,11 @@ app.post('/api/sendTweet', function(req, res) {
 						conn.close();
 						var reply = 'Message id: '.concat(mess_id);
 						res.json( { result: 'success',
-									message: reply } );
+								message: reply } );
 					}, 1000);
 				} );
 			}
 		} );
-	} );
-} );
-
-app.delete('/api/delTweet', function(req, res) {
-	console.log('Valid API, \"/api/delTweet\",  printing received json...');
-	console.log(req.body);
-	if(typeof req.body.id === 'undefined') {
-		res.json( { result: 'error',
-					message: 'Missing -id- field.' } );
-		console.log('Exit because -id- field is missing');
-		return;
-	}
-	var getTweetQuery_elements = [];
-	getTweetQuery_elements.push(createOrionQueryElement('Message', 'false', req.body.id));
-	var getTweetQuery_body = createOrionQueryBody(getTweetQuery_elements);
-
-	request.post( {
-		headers: HEADERS,
-		url: URLS.orion_queryContext,
-		body: JSON.stringify(getTweetQuery_body)
-	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t search for tweet' } );
-			return;
-		}
-		var queryForTweet = JSON.parse(body);
-		if(typeof queryForTweet.contextResponses === 'undefined') { // 404 shouldn't be possible
-			res.json( { result: 'error',
-						message: 'There was an error with Object Store' } );
-			console.log('Exit because of error with Object Store.');
-			return;
-		}
-		else {
-			var tweetFromQuery_attr = queryForTweet.contextResponses[0].contextElement.attributes;
-			for(var i = 0; i < tweetFromQuery_attr.length; i++) {
-				if(tweetFromQuery_attr[i].name === 'author') {
-					if(tweetFromQuery_attr[i].value !== req.body.user) {
-						res.json( { result: 'error',
-									message: 'Could not delete message: you are not the author' } );
-						console.log('Exit because attempted to delete another\'s message.');
-						return;
-					}
-					break;
-				}
-			}
-			var accToken = req.dataSent.accToken;
-			var accTokenS = req.dataSent.accTokenS;
-			var destrTweet_url = URLS.destroy_tweet.concat(req.body.id).concat('.json');
-			var destrTweet_nonce = genNonce();
-			var destrTweet_timestamp = genTimestamp();
-			var params = [['oauth_token', accToken]];
-			var destrTweet_signature = genOauthSign('POST', destrTweet_url, destrTweet_nonce, destrTweet_timestamp, params, accTokenS);
-			var destrTweet_authString = genAuthString(destrTweet_nonce, destrTweet_signature, destrTweet_timestamp, ['oauth_token', accToken]);
-			var destrTweet_headers = {'Authorization': destrTweet_authString };
-			request.post( {
-				headers: destrTweet_headers,
-				url: destrTweet_url
-			}, function(error, response, body) {
-				if(error) {
-					res.json( { result: 'error',
-								message: 'Could not delete message: failed sending request to Twitter' } );
-					console.log('Exit because could not send destroy request to Twitter.');
-					return;
-				}
-				var destrTweet_resp = JSON.parse(body);
-				if(typeof destrTweet_resp.errors !== 'undefined' && destrTweet_resp.errors[0].code !== 144) {
-					res.json( { result: 'error',
-								message: 'Could not delete message: Twitter returned an error' } );
-					console.log('Exit because of an error returned by Twitter');
-					return;
-				}
-				//Tweet destroyed or not found -> destroy in object store
-				var objStore_elements = [];
-				objStore_elements.push(createOrionElement('Message', 'false', req.body.id, []));
-				var objStore_body = createOrionBody(objStore_elements, 'DELETE');
-
-				request.post( {
-					headers: HEADERS,
-					url: URLS.orion_updateContext,
-					body: JSON.stringify(objStore_body)
-				}, function(error, response, body) {
-					if(error) {
-						res.json( { result: 'error',
-									message: 'Could not delete message: failed sending request to Object Store' } );
-						console.log('Exit because failed sending request to Orion. Message could have been deleted from Twitter nonetheless');
-						return;
-					}
-					var queryResult = JSON.parse(body);
-					if(typeof queryResult.errorCode !== 'undefined') { // 404, again, shouldn't be possible
-						res.json( { result: 'error',
-									message: 'Could not delete message: error returned by Object Store' } );
-						console.log('Exit because of an error returned by Orion. Message could have been deleted from Twitter nonetheless');
-						return;
-					}
-					res.json( { result: 'success',
-								message: 'Tweet destroyed successfully.' } );
-					console.log('Tweet destroyed.');
-				} );
-			} );
-		}
 	} );
 } );
 
@@ -1794,25 +1836,23 @@ app.post('/api/getTweets', function(req, res) {
 		console.log('Exit because Author property is wrong');
 		return;
 	}
+
 	var getTweetsQuery_elements = [];
 	getTweetsQuery_elements.push(createOrionQueryElement('Message', 'true', '.\*'));
-	var getTweetsQuery_body = createOrionQueryBody(getTweetsQuery_elements); 
+	getTweetsQuery_body = createOrionQueryBody(getTweetsQuery_elements); 
 
 	request.post( {
-		headers: HEADERS,
+		headers: ORION_HEADERS,
 		url: URLS.orion_queryContext,
 		body: JSON.stringify(getTweetsQuery_body),
 		qs: { limit: 1000 }
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t retrieve tweets' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var queryForTweets = JSON.parse(body);
 		if(typeof queryForTweets.errorCode !== 'undefined') {
-			if(queryForTweets.errorCode.code === '404') {
+			if(queryForTweets.errorCode.code == '404') {
 				var respMessage = [];
 				res.json( { result: 'success',
 							message: respMessage } );
@@ -1826,81 +1866,91 @@ app.post('/api/getTweets', function(req, res) {
 				return;
 			}					
 		}
-		var tweetsFromQuery = queryForTweets.contextResponses;
+
+		var tweetsFromQuery = JSON.parse(body).contextResponses;
 		var all_tweets = [];
 		var wantedTweets = [];
 		var switch_value;
 		if(typeof req.body.author !== 'undefined') {
 			if(typeof req.body.feeling !== 'undefined') {
-				if(typeof req.body.topic !== 'undefined')
+				if(typeof req.body.topic !== 'undefined') {
 					switch_value = 0;
-				else
+				}
+				else {
 					switch_value = 1;
+				}
 			}
 			else {
-				if(typeof req.body.topic !== 'undefined')
+				if(typeof req.body.topic !== 'undefined') {
 					switch_value = 2;
-				else
+				}
+				else {
 					switch_value = 3;
+				}
 			}
 		}
 		else {
 			if(typeof req.body.feeling !== 'undefined') {
-				if(typeof req.body.topic !== 'undefined')
+				if(typeof req.body.topic !== 'undefined') {
 					switch_value = 4;
-				else
+				}
+				else {
 					switch_value = 5;
+				}
 			}
 			else {
-				if(typeof req.body.topic !== 'undefined')
+				if(typeof req.body.topic !== 'undefined') {
 					switch_value = 6;
-				else
+				}
+				else {
 					switch_value = 7;
+				}
 			}
 		}
+
 		all_tweets = createTweetsList(tweetsFromQuery);
 
 		switch (switch_value) {
 			case 0:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.author === all_tweets[i].author && req.body.feeling === all_tweets[i].feeling
-						&& req.body.topic === all_tweets[i].topic)
+					if(req.body.author == all_tweets[i].author && req.body.feeling == all_tweets[i].feeling
+						&& req.body.topic == all_tweets[i].topic)
 						wantedTweets.push(all_tweets[i]);
 				}
 				break;
 			case 1:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.author === all_tweets[i].author && req.body.feeling === all_tweets[i].feeling)
+					if(req.body.author == all_tweets[i].author && req.body.feeling == all_tweets[i].feeling)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
 			case 2:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.author === all_tweets[i].author && req.body.topic === all_tweets[i].topic)
+					if(req.body.author == all_tweets[i].author && req.body.topic == all_tweets[i].topic)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
 			case 3:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.author === all_tweets[i].author)
+					if(req.body.author == all_tweets[i].author)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
 			case 4:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.feeling === all_tweets[i].feeling && req.body.topic === all_tweets[i].topic)
+					if(req.body.feeling == all_tweets[i].feeling && req.body.topic == all_tweets[i].topic)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
 			case 5:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.feeling === all_tweets[i].feeling)
+					if(req.body.feeling == all_tweets[i].feeling)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
 			case 6:
 				for(var i = 0; i < all_tweets.length; i++) {
-					if(req.body.topic === all_tweets[i].topic)
+					if(req.body.topic == all_tweets[i].topic)
 						wantedTweets.push(all_tweets[i]);							
 				}						
 				break;
@@ -1919,22 +1969,20 @@ app.post('/api/getTweets', function(req, res) {
 app.post('/api/getUsers', function(req, res) {
 	console.log('Valid API, \"/api/getUsers\", printing received json...');
 	console.log(req.body);
+
 	var usersQuery_elements = [];
 	usersQuery_elements.push(createOrionQueryElement('User', 'true', '.\*'));
 	usersQuery_body = createOrionQueryBody(usersQuery_elements);
 			
 	request.post( {
-		headers: HEADERS,
+		headers: ORION_HEADERS,
 		url: URLS.orion_queryContext,
 		body: JSON.stringify(usersQuery_body),
 		qs: { limit: 1000 }
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t retrieve users' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var queryRes = JSON.parse(body);
 		if(typeof queryRes.contextResponses === 'undefined') {
 			//It could not be 'errorCode 404', because if we're here we are registered,
@@ -1975,44 +2023,119 @@ app.post('/api/getDataset', function(req, res) {
 		console.log('Exit because Author property is wrong');
 		return;
 	}
+
 	var userSent = req.body.user;
 	var codeSent = req.body.apiCode;
+
 	var text = [];
-	var getTweets_url = URLS.api.concat('/getTweets');
+
+	var getTweets_url = 'http://127.0.0.1:4242/api/getTweets';
 	var getTweets_body = { 
 		apiCode: codeSent,
 		user: userSent
 	};
-	if(typeof req.body.author !== 'undefined')
-		getTweets_body['author'] = req.body.author;
-	if(typeof req.body.feeling !== 'undefined')
-		getTweets_body['feeling'] = req.body.feeling;
-	if(typeof req.body.topic !== 'undefined')
-		getTweets_body['topic'] = req.body.topic;
-
 	request.post( {
 		url: getTweets_url,
-		headers: HEADERS,
-		body: JSON.stringify(getTweets_body)
+		headers: ORION_HEADERS,
+		body: JSON.stringify(getTweets_body),
+		qs: { limit: 1000 }
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to retrieve data');
-			res.json( { result: 'error',
-						message: 'Couldn\'t send request to retrieve data' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var body_j = JSON.parse(body);
-		if(body_j.result === 'error') {
-			console.log('There was an error retrieving data');
-			res.json( { result: 'error',
-						message: 'Couldn\'t retrieve data' } );
-			return;
-		}
 		var tweets = body_j.message;
-		for(var i = 0; i < tweets.length; i++)
-			text.push(tweets[i].text);
-		
+					
+		var switch_value;
+		if(typeof req.body.author !== 'undefined') {
+			if(typeof req.body.feeling !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined') {
+					switch_value = 0;
+				}
+				else {
+					switch_value = 1;
+				}
+			}
+			else {
+				if(typeof req.body.topic !== 'undefined') {
+					switch_value = 2;
+				}
+				else {
+					switch_value = 3;
+				}
+			}
+		}
+		else {
+			if(typeof req.body.feeling !== 'undefined') {
+				if(typeof req.body.topic !== 'undefined') {
+					switch_value = 4;
+				}
+				else {
+					switch_value = 5;
+				}
+			}
+			else {
+				if(typeof req.body.topic !== 'undefined') {
+					switch_value = 6;
+				}
+				else {
+					switch_value = 7;
+				}
+			}
+		}
+
+		switch (switch_value) {
+			case 0:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.author == tweets[i].author && req.body.feeling == tweets[i].feeling && req.body.topic == tweets[i].topic)
+						text.push(tweets[i].text);
+				}
+				break;
+			case 1:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.author == tweets[i].author && req.body.feeling == tweets[i].feeling)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 2:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.author == tweets[i].author && req.body.topic == tweets[i].topic)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 3:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.author == tweets[i].author)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 4:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.feeling == tweets[i].feeling && req.body.topic == tweets[i].topic)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 5:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.feeling == tweets[i].feeling)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 6:
+				for(var i = 0; i < tweets.length; i++) {
+					if(req.body.topic == tweets[i].topic)
+						text.push(tweets[i].text);
+				}						
+				break;
+			case 7:
+				for(var i = 0; i < tweets.length; i++) {
+					text.push(tweets[i].text);
+				}
+				break;
+		}
+
 		var dataset = genDataset(text);
+
 		res.json( { result: 'success',
 					message: dataset } );
 		console.log('Sent dataset.');
@@ -2028,28 +2151,32 @@ app.post('/api/getChart', function(req, res) {
 		console.log('Exit for missing \"chart\" and/or \"scope\" field in request body');
 		return;
 	}
+
 	var userSent = req.body.user;
 	var codeSent = req.body.apiCode;
 	var chartSent = req.body.chart;
 	var scopeSent = req.body.scope;
+
 	if(!checkChart(chartSent)) {
 		res.json( { result: 'error',
 					message: 'Wrong -chart- property.' } );
 		console.log('Exit because Chart property is wrong');
 		return;
 	}
-	if(chartSent.slice(0, 3) === 'Pie') {
+
+	if(chartSent.slice(0, 3) == 'Pie') {
 		sendPie(scopeSent, res, userSent, codeSent, chartSent);
 		return;
 	}
-	if(chartSent.slice(0, 3) === 'Bar') {
+	if(chartSent.slice(0, 3) == 'Bar') {
 		sendBar(scopeSent, res, userSent, codeSent, chartSent);
 		return;
 	}
+
 } );
 
 var sendPie = function(scope, res, user, code, chart) {
-	if(!checkUser(scope) && scope !== '%%') {
+	if(!checkUser(scope) && scope != '%%') {
 		res.json( { result: 'error',
 					message: 'Wrong -scope- property.' } );
 		console.log('Exit because Scope property is wrong');
@@ -2065,20 +2192,20 @@ var sendPie = function(scope, res, user, code, chart) {
 	var chart_data = 'chd=t:';
 	var chart_scaling = 'chds=a';
 	var chart_legend = 'chdl=';
-	if(pie_type === 'Feelings' || checkTopic(pie_type)) {
+	if(pie_type == 'Feelings' || checkTopic(pie_type)) {
 		var numFeeling = new Array(FEELINGS.length);
 		for(var i = 0; i < FEELINGS.length; i++) {
-			numFeeling[i] = 0;
+			numFeeling[i] = 0; //paraculata per usare un ciclo solo, numFeeling e FEELINGS hanno stessa lunghezza
 			chart_labels = chart_labels.concat(FEELINGS[i]).concat('|');
 		}
 		chart_color = 'chco=0000FF'; //blue gradient
 		chart_labels = chart_labels.slice(0, chart_labels.length - 1);
-		if(pie_type === 'Feelings')
+		if(pie_type == 'Feelings')
 			chart_title = 'chtt=Feelings';
 		else
 			chart_title = 'chtt='.concat(pie_type).concat('`s+Feelings');
 	}
-	if(pie_type === 'Topics' || checkFeeling(pie_type)) {
+	if(pie_type == 'Topics' || checkFeeling(pie_type)) {
 		var numTopic = new Array(TOPICS.length);
 		for(var i = 0; i < TOPICS.length; i++) {
 			numTopic[i] = 0;
@@ -2086,12 +2213,12 @@ var sendPie = function(scope, res, user, code, chart) {
 		}
 		chart_color = 'chco=00BC00'; //green gradient
 		chart_labels = chart_labels.slice(0, chart_labels.length - 1);
-		if(pie_type === 'Topics')
+		if(pie_type == 'Topics')
 			chart_title = 'chtt=Topics';
 		else
 			chart_title = 'chtt='.concat(pie_type).concat('`s+Topics');
 	}
-	var tw_url = URLS.api.concat('/getTweets');
+	var tw_url = 'http://127.0.0.1:4242/api/getTweets';
 	var tw_body = {
 		apiCode: code,
 		user: user
@@ -2105,47 +2232,44 @@ var sendPie = function(scope, res, user, code, chart) {
 	
 	request.post( {
 		url: tw_url,
-		headers: HEADERS,
-		body: JSON.stringify(tw_body)
+		headers: ORION_HEADERS,
+		body: JSON.stringify(tw_body),
+		qs: { limit: 1000 }
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to retrieve data');
-			res.json( { result: 'error',
-						message: 'Couldn\'t send request to retrieve data' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var body_json = JSON.parse(body);
-		if(body_json.result === 'error') {
+		if(body_json.result == 'error') {
 			res.json( { result: 'error',
 						message: 'Could not retrieve data.' } );
 			console.log('Exit because couldn\'t retrieve data');
 			return;
 		}
 		var all_tweets = body_json.message;
-		if(all_tweets.length === 0) {
+		if(all_tweets.length == 0) {
 			res.json( { result: 'success',
 						message: '' } );
 			console.log('Success, sent empty string');
 		 	return;
 		}
-		if(pie_type === 'Feelings' || checkTopic(pie_type)) {
+		if(pie_type == 'Feelings' || checkTopic(pie_type)) {
 			for(var i = 0; i < all_tweets.length; i++) {
 				for(var j = 0; j < FEELINGS.length; j++) {
-					if(all_tweets[i].feeling === FEELINGS[j])
+					if(all_tweets[i].feeling == FEELINGS[j])
 						numFeeling[j]++;
 				}
-			}
-			for(var i = 0; i < FEELINGS.length; i++) {
+			}for(var i = 0; i < FEELINGS.length; i++) {
 				chart_data = chart_data.concat(numFeeling[i]).concat(',');
 				chart_legend = chart_legend.concat(FEELINGS[i] + '+=+' + numFeeling[i]).concat('|');
 			}
 			chart_data = chart_data.slice(0, chart_data.length - 1);
 			chart_legend = chart_legend.slice(0, chart_legend.length - 1);
 		}
-		if(pie_type === 'Topics' || checkFeeling(pie_type)) {
+		if(pie_type == 'Topics' || checkFeeling(pie_type)) {
 			for(var i = 0; i < all_tweets.length; i++) {
 				for(var j = 0; j < FEELINGS.length; j++) {
-					if(all_tweets[i].topic === TOPICS[j])
+					if(all_tweets[i].topic == TOPICS[j])
 						numTopic[j]++;
 				}
 			}
@@ -2156,10 +2280,12 @@ var sendPie = function(scope, res, user, code, chart) {
 			chart_data = chart_data.slice(0, chart_data.length - 1);
 			chart_legend = chart_legend.slice(0, chart_legend.length - 1);
 		}
-		if(scope === '%%')
+
+		if(scope == '%%')
 			chart_title = chart_title.concat('|All+Users');
 		else
 			chart_title = chart_title.concat('|').concat(scope);
+
 		chart_url = chart_url.concat('?').concat(chart_type).concat('&').concat(chart_size).concat('&').concat(chart_color).concat('&');
 		chart_url = chart_url.concat(chart_labels).concat('&').concat(chart_data).concat('&').concat(chart_scaling).concat('&');
 		chart_url = chart_url.concat(chart_title);
@@ -2171,7 +2297,7 @@ var sendPie = function(scope, res, user, code, chart) {
 };
 
 var sendBar = function(scope, res, user, code, chart) {
-	if(!checkUser(scope) && scope !== '%%' && !checkCompareScope(scope)) {
+	if(!checkUser(scope) && scope != '%%' && !checkCompareScope(scope)) {
 		res.json( { result: 'error',
 					message: 'Wrong -scope- property.' } );
 		console.log('Exit because Scope property is wrong');
@@ -2187,7 +2313,7 @@ var sendBar = function(scope, res, user, code, chart) {
 	var bar_type;
 	var chart_legend = 'chdl=';
 	var chart_color;
-	if(chart === 'Bar')
+	if(chart == 'Bar')
 		chart_title = 'chtt=Most+Used+Words';
 	else {
 		bar_type = chart.slice(4);
@@ -2195,8 +2321,8 @@ var sendBar = function(scope, res, user, code, chart) {
 	}
 	var chart_data = 'chd=t:';
 	var chart_scaling = 'chds=a';
-	var tw_url = URLS.api.concat('/getDataset');
-	if(checkUser(scope) || scope === '%%') {
+	var tw_url = 'http://127.0.0.1:4242/api/getDataset';
+	if(checkUser(scope) || scope == '%%') {
 		chart_size = 'chs=750x400';
 		chart_color = 'chco=4D89F9';
 		var tw_body = {
@@ -2212,17 +2338,15 @@ var sendBar = function(scope, res, user, code, chart) {
 		
 		request.post( {
 			url: tw_url,
-			headers: HEADERS,
-			body: JSON.stringify(tw_body)
+			headers: ORION_HEADERS,
+			body: JSON.stringify(tw_body),
+			qs: { limit: 1000 }
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending request to retrieve data');
-				res.json( { result: 'error',
-							message: 'Couldn\'t send request to retrieve data' } );
-				return;
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			var body_json = JSON.parse(body);
-			if(body_json.result === 'error') {
+			if(body_json.result == 'error') {
 				res.json( { result: 'error',
 							message: 'Could not retrieve data.' } );
 				console.log('Exit because couldn\'t retrieve data');
@@ -2235,25 +2359,28 @@ var sendBar = function(scope, res, user, code, chart) {
 			dataset_arr.sort(function(a, b) {
 				return b[1] - a[1];
 			} );
-			if(dataset_arr.length === 0) {
+			if(dataset_arr.length == 0) {
 				res.json( { result: 'success',
 							message: '' } );
 				console.log('Success, sent empty string.');
 			 	return;
 			}
-			dataset_arr = dataset_arr.slice(0, 20);
+
+			dataset_arr = dataset_arr.slice(0, 20); //randomizziamo?
 
 			for(var i = 0; i < dataset_arr.length; i++) {
 				chart_data = chart_data.concat(dataset_arr[i][1].toString()).concat(',');
-				chart_labels = chart_labels.concat('|').concat('\(' + (i + 1).toString() + '\)');
+				chart_labels = chart_labels.concat('|').concat('\(' + (i + 1).toString() + '\)');//.concat(dataset_arr[i][0]);
 				chart_legend = chart_legend.concat('\(' + (i + 1).toString() + '\)+=+').concat(dataset_arr[i][0]).concat('|');
 			}
 			chart_data = chart_data.slice(0, chart_data.length - 1);
 			chart_legend = chart_legend.slice(0, chart_legend.length - 1);
-			if(scope === '%%')
+
+			if(scope == '%%')
 				chart_title = chart_title.concat('|All+Users');
 			else
 				chart_title = chart_title.concat('|').concat(scope);
+
 			chart_url = chart_url.concat('?').concat(chart_type).concat('&').concat(chart_size).concat('&').concat(chart_color).concat('&');
 			chart_url = chart_url.concat(chart_labels).concat('&').concat(chart_data).concat('&').concat(chart_scaling).concat('&');
 			chart_url = chart_url.concat(chart_title).concat('&').concat(chart_labType).concat('&').concat(chart_space).concat('&').concat(chart_legend);
@@ -2267,6 +2394,7 @@ var sendBar = function(scope, res, user, code, chart) {
 		var chart_legPos = 'chdlp=b';
 		chart_color = 'chco=4D89F9,00CC00';
 		var scope_arr = scope.split('%');
+		console.log(scope_arr);
 		chart_title = chart_title.concat('|').concat(scope_arr[0]).concat('+vs.+').concat(scope_arr[1]);
 		var tw_body0 = {
 			apiCode: code,
@@ -2280,22 +2408,18 @@ var sendBar = function(scope, res, user, code, chart) {
 
 		request.post( {
 			url: tw_url,
-			headers: HEADERS,
-			body: JSON.stringify(tw_body0)
+			headers: ORION_HEADERS,
+			body: JSON.stringify(tw_body0),
+			qs: { limit: 1000 }
 		}, function(error, response, body0) {
-			if(error) {
-				console.log('Error in sending request to retrieve data');
-				res.json( { result: 'error',
-							message: 'Couldn\'t send request to retrieve data' } );
-				return;
-			}
 			var body_json0 = JSON.parse(body0);
-			if(body_json0.result === 'error') {
+			if(body_json0.result == 'error') {
 				res.json( { result: 'error',
 							message: 'Could not retrieve data.' } );
 				console.log('Exit because couldn\'t retrieve data');
 				return;
 			}
+
 			var tw_body1 = {
 				apiCode: code,
 				user: user,
@@ -2308,22 +2432,19 @@ var sendBar = function(scope, res, user, code, chart) {
 
 			request.post( {
 				url: tw_url,
-				headers: HEADERS,
-				body: JSON.stringify(tw_body1)
+				headers: ORION_HEADERS,
+				body: JSON.stringify(tw_body1),
+				qs: { limit: 1000 }
 			}, function(error, response, body1) {
-				if(error) {
-					console.log('Error in sending request to retrieve data');
-					res.json( { result: 'error',
-								message: 'Couldn\'t send request to retrieve data' } );
-					return;
-				}
 				var body_json1 = JSON.parse(body1);
-				if(body_json1.result === 'error') {
+				if(body_json1.result == 'error') {
 					res.json( { result: 'error',
 								message: 'Could not retrieve data.' } );
 					console.log('Exit because couldn\'t retrieve data');
 					return;
 				}
+
+
 				var dataset0 = body_json0.message;
 				var dataset_arr0 = [];
 				for(var key in dataset0)
@@ -2331,12 +2452,14 @@ var sendBar = function(scope, res, user, code, chart) {
 				dataset_arr0.sort(function(a, b) {
 					return b[1] - a[1];
 				} );
-				if(dataset_arr0.length === 0) {
+
+				if(dataset_arr0.length == 0) {
 					res.json( { result: 'success',
 								message: '' } );
 					console.log('Success, sent empty string.');
 					return;
 				}
+
 				var dataset1 = body_json1.message;
 				var dataset_arr1 = [];
 				for(var key in dataset1)
@@ -2344,31 +2467,43 @@ var sendBar = function(scope, res, user, code, chart) {
 				dataset_arr1.sort(function(a, b) {
 					return b[1] - a[1];
 				} );
-				if(dataset_arr1.length === 0) {
+
+				if(dataset_arr1.length == 0) {
 					res.json( { result: 'success',
 								message: '' } );
 					console.log('Success, sent empty string.');
 					return;
 				}
+
+				console.log('--- DATASET ARR 0 ---');
+				console.log(dataset_arr0);
+				console.log('--- DATASET ARR 1 ---');
+				console.log(dataset_arr1);
+
+
 				var dataset_arr = [];
+
 				for(var i = 0; i < dataset_arr0.length; i++) {
 					for(var j = 0; j < dataset_arr1.length; j++) {
-						if(dataset_arr0[i][0] === dataset_arr1[j][0]) {
+						if(dataset_arr0[i][0] == dataset_arr1[j][0]) {
 							var elem = [dataset_arr0[i], dataset_arr1[j]];
-							console.log('--- Found Element ---');	//array elems' indexes [ [['k0','v0'],['k1','v1']], [[],[]], ... ]
-							dataset_arr.push(elem); 			// -> [ [[000,001],[010,011]], ... ,[[i00,i01],[i10,i11]], ... ]
-						}										//			   ^
-					}											//			   | elem of index [0][0][1]
+							console.log('--- Found Element ---');//indici elementi array [ [['k0','v0'],['k1','v1']], ... ]
+							console.log(elem);		//				v
+							dataset_arr.push(elem); // -> [ [[000,001],[010,011]], ... ,[[i00,i01],[i10,i11]], ... ]
+						}
+					}
 				}
+
 				console.log('--- DATASET ARR ---');
 				console.log(dataset_arr);
 
-				if(dataset_arr.length === 0) {
+				if(dataset_arr.length == 0) {
 					res.json( { result: 'success',
 								message: '' } );
 					console.log('Success, sent empty string.');
 					return;
 				}
+
 				dataset_arr = dataset_arr.slice(0, 20); //randomizziamo?
 				var data0 = '',
 					data1 = '',
@@ -2377,12 +2512,19 @@ var sendBar = function(scope, res, user, code, chart) {
 				for(var i = 0; i < dataset_arr.length; i++) {
 					data0 = data0.concat(dataset_arr[i][0][1].toString()).concat(',');
 					data1 = data1.concat(dataset_arr[i][1][1].toString()).concat(',');
-					chart_labels = chart_labels.concat('|').concat(dataset_arr[i][0][0]);
+					chart_labels = chart_labels.concat('|').concat(dataset_arr[i][0][0]);//.concat('\(' + (i + 1).toString() + '\)');
+					//legend0 = legend0.concat('\(' + (i + 1).toString() + '\)+\`').concat(dataset_arr[i][0][0]).concat('\`,');
+					//legend1 = legend1.concat('\(' + (i + 1).toString() + '\)+\`').concat(dataset_arr[i][1][0]).concat('\`,');
 				}
 				data0 = data0.slice(0, data0.length - 1);
 				data1 = data1.slice(0, data1.length - 1);
 				chart_data = chart_data.concat(data0).concat('|').concat(data1);
+				//legend0 = legend0.slice(0, legend0.length - 1);
+				//legend1 = legend1.slice(0, legend1.length - 1);
 				chart_legend = chart_legend.concat(legend0).concat('|').concat(legend1);
+
+
+
 				chart_url = chart_url.concat('?').concat(chart_type).concat('&').concat(chart_size).concat('&').concat(chart_color).concat('&');
 				chart_url = chart_url.concat(chart_labels).concat('&').concat(chart_data).concat('&').concat(chart_scaling).concat('&').concat(chart_space).concat('&');
 				chart_url = chart_url.concat(chart_title).concat('&').concat(chart_labType).concat('&').concat(chart_legend).concat('&').concat(chart_legPos);
@@ -2417,7 +2559,7 @@ app.delete('/api/setNotifications', function(req, res) {
 			console.log('Exit for wrong feeling(s) in request body');
 			return;
 		}
-		if(req.body.feelings.length === 0) {
+		if(req.body.feelings.length == 0) {
 			res.json( { result: 'error',
 						message: 'No -feelings- notifications to unset' } );
 			console.log('No feelings notifications to unset!');
@@ -2431,7 +2573,7 @@ app.delete('/api/setNotifications', function(req, res) {
 			console.log('Exit for wrong topic(s) in request body');
 			return;
 		}
-		if(req.body.topics.length === 0) {
+		if(req.body.topics.length == 0) {
 			res.json( { result: 'error',
 						message: 'No -topics- notifications to unset' } );
 			console.log('No topics notifications to unset!');
@@ -2442,16 +2584,13 @@ app.delete('/api/setNotifications', function(req, res) {
 	queryUser_elements.push(createOrionQueryElement('User', 'false', req.body.user));
 	queryUser_body = createOrionQueryBody(queryUser_elements);
 	request.post( {
-		headers: HEADERS,
+		headers: ORION_HEADERS,
 		url: URLS.orion_queryContext,
 		body: JSON.stringify(queryUser_body)
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t send request to Object Store' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var queryRes = JSON.parse(body);
 		//errorCode 404 NOT possible
 		if(typeof queryRes.contextResponses === 'undefined') {
@@ -2464,23 +2603,26 @@ app.delete('/api/setNotifications', function(req, res) {
 		var contextRes_attr = contextRes[0].contextElement.attributes;
 		var notif_toUpdate;
 		for(var i = 0; i < contextRes_attr.length; i++) {
-			if(contextRes_attr[i].name === 'notif_wanted') {
+			if(contextRes_attr[i].name == 'notif_wanted') {
 				notif_toUpdate = contextRes_attr[i].value;
 				break;
 			}
 		}
+
 		if(emptyObject(notif_toUpdate.feelings) && emptyObject(notif_toUpdate.topics)) {
 			res.json( { result: 'success',
 						message: notif_toUpdate } );
 			console.log('No notifications to unset!');
 			return;
 		}
+
 		if(typeof req.body.feelings !== 'undefined') {
 			if(!emptyObject(notif_toUpdate.feelings)) {
 				for(var i = 0; i < req.body.feelings.length; i++) {
 					for(var j = 0; j < notif_toUpdate.feelings.length; j++) {
-						if(req.body.feelings[i] === notif_toUpdate.feelings[j])
+						if(req.body.feelings[i] == notif_toUpdate.feelings[j]) {
 							notif_toUpdate.feelings.splice(j, 1);
+						}
 					}
 				}
 			}
@@ -2489,12 +2631,14 @@ app.delete('/api/setNotifications', function(req, res) {
 			if(!emptyObject(notif_toUpdate.topics)) {
 				for(var i = 0; i < req.body.topics.length; i++) {
 					for(var j = 0; j < notif_toUpdate.topics.length; j++) {
-						if(req.body.topics[i] === notif_toUpdate.topics[j])
+						if(req.body.topics[i] == notif_toUpdate.topics[j]) {
 							notif_toUpdate.topics.splice(j, 1);
+						}
 					}
 				}
 			}
 		}
+
 		var update_attribute = [];
 		update_attribute.push(createOrionAttribute('notif_wanted', 'object', notif_toUpdate));
 		var update_elements = [];
@@ -2502,16 +2646,13 @@ app.delete('/api/setNotifications', function(req, res) {
 		var update_body = createOrionBody(update_elements, 'UPDATE');
 
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_updateContext,
 			body: JSON.stringify(update_body)
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending request to Orion');
-				res.json( { result: 'error',
-							message: 'Couldn\'t update Object Store' } );
-				return;
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			var body_j = JSON.parse(body);
 			if(body_j.contextResponses === 'undefined') {
 				res.json( { result: 'error',
@@ -2524,24 +2665,27 @@ app.delete('/api/setNotifications', function(req, res) {
 				conn.createChannel(function(err, ch) {			
 					ch.assertExchange(EXCHANGE, 'topic');
 					var queue = req.body.user.concat('_queue');
-					ch.assertQueue(queue);					
-					//unsetting only new 'un'-bindings
-					if(typeof req.body.feelings !== 'undefined')
+					ch.assertQueue(queue);
+					
+					//unsetting only new 'un'-bindings, no all (notif_toUpdate contains new AND old)
+					if(typeof req.body.feelings !== 'undefined') {
 						req.body.feelings.forEach(function(key) {
 							ch.unbindQueue(queue, EXCHANGE, key.concat('.').concat('*'));
-						} );
-					if(typeof req.body.topics !== 'undefined')
+						});
+					}
+					if(typeof req.body.topics !== 'undefined') {
 						req.body.topics.forEach(function(key) {
 							ch.unbindQueue(queue, EXCHANGE, '*.'.concat(key));
-						} );
-				} );
+						});
+					}
+				});
 				setTimeout(function() {
 					conn.close();
 					res.json( { result: 'success',
 								message: notif_toUpdate } );
 					console.log('Notifications settings unset!');
 				}, 1000);
-			} );
+			});
 		} );
 	} );
 } );
@@ -2568,7 +2712,7 @@ app.post('/api/setNotifications', function(req, res) {
 			console.log('Exit for wrong feeling(s) in request body');
 			return;
 		}
-		if(req.body.feelings.length === 0) {
+		if(req.body.feelings.length == 0) {
 			res.json( { result: 'error',
 						message: 'No -feelings- notifications to set' } );
 			console.log('No feelings notifications to set!');
@@ -2582,7 +2726,7 @@ app.post('/api/setNotifications', function(req, res) {
 			console.log('Exit for wrong topic(s) in request body');
 			return;
 		}
-		if(req.body.topics.length === 0) {
+		if(req.body.topics.length == 0) {
 			res.json( { result: 'error',
 						message: 'No -topics- notifications to set' } );
 			console.log('No topics notifications to set!');
@@ -2593,16 +2737,13 @@ app.post('/api/setNotifications', function(req, res) {
 	queryUser_elements.push(createOrionQueryElement('User', 'false', req.body.user));
 	queryUser_body = createOrionQueryBody(queryUser_elements);
 	request.post( {
-		headers: HEADERS,
+		headers: ORION_HEADERS,
 		url: URLS.orion_queryContext,
 		body: JSON.stringify(queryUser_body)
 	}, function(error, response, body) {
-		if(error) {
-			console.log('Error in sending request to Orion');
-			res.json( { result: 'error',
-						message: 'Couldn\'t send request to Object Store' } );
-			return;
-		}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 		var queryRes = JSON.parse(body);
 		//errorCode 404 NOT possible
 		if(typeof queryRes.contextResponses === 'undefined') {
@@ -2620,9 +2761,10 @@ app.post('/api/setNotifications', function(req, res) {
 				break;
 			}
 		}
-		if(typeof notif_toUpdate.feelings === 'string' && notif_toUpdate.feelings.length === 0)
+
+		if(typeof notif_toUpdate.feelings === 'string' && notif_toUpdate.feelings.length == 0)
 			notif_toUpdate.feelings = [];
-		if(typeof notif_toUpdate.topics === 'string' && notif_toUpdate.topics.length === 0)
+		if(typeof notif_toUpdate.topics === 'string' && notif_toUpdate.topics.length == 0)
 			notif_toUpdate.topics = [];
 
 		if(typeof req.body.feelings !== 'undefined') {
@@ -2635,7 +2777,6 @@ app.post('/api/setNotifications', function(req, res) {
 				}
 			}
 		}
-
 		if(typeof req.body.topics !== 'undefined') {
 			if(emptyObject(notif_toUpdate.topics))
 				notif_toUpdate.topics = req.body.topics;
@@ -2646,6 +2787,7 @@ app.post('/api/setNotifications', function(req, res) {
 				}
 			}
 		}
+
 		var update_attribute = [];
 		update_attribute.push(createOrionAttribute('notif_wanted', 'object', notif_toUpdate));
 		var update_elements = [];
@@ -2653,16 +2795,13 @@ app.post('/api/setNotifications', function(req, res) {
 		var update_body = createOrionBody(update_elements, 'UPDATE');
 
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_updateContext,
 			body: JSON.stringify(update_body)
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending request to Orion');
-				res.json( { result: 'error',
-							message: 'Couldn\'t update Object Store' } );
-				return;
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			var body_j = JSON.parse(body);
 			if(body_j.contextResponses === 'undefined') {
 				res.json( { result: 'error',
@@ -2676,23 +2815,26 @@ app.post('/api/setNotifications', function(req, res) {
 					ch.assertExchange(EXCHANGE, 'topic');
 					var queue = req.body.user.concat('_queue');
 					ch.assertQueue(queue);
+					
 					//setting only new bindings, no all bindings (notif_toUpdate contains new AND old)
-					if(typeof req.body.feelings !== 'undefined')
+					if(typeof req.body.feelings !== 'undefined') {
 						req.body.feelings.forEach(function(key) {
 							ch.bindQueue(queue, EXCHANGE, key.concat('.').concat('*'));
-						} );
-					if(typeof req.body.topics !== 'undefined')
+						});
+					}
+					if(typeof req.body.topics !== 'undefined') {
 						req.body.topics.forEach(function(key) {
 							ch.bindQueue(queue, EXCHANGE, '*.'.concat(key));
-						} );
-				} );
+						});
+					}
+				});
 				setTimeout(function() {
 					conn.close();
 					res.json( { result: 'success',
 								message: notif_toUpdate } );
 					console.log('Notifications settings set!');
 				}, 1000);
-			} );
+			});
 		} );
 	} );
 } );
@@ -2700,6 +2842,7 @@ app.post('/api/setNotifications', function(req, res) {
 app.post('/api/getNotifications', function(req, res) {
 	console.log('Valid API, \"/api/getNotifications\",  printing received json...');
 	console.log(req.body);
+
 	var notifications= [];
 	amqp.connect('amqp://rabbitmq', function(err, conn) {
 		conn.createChannel(function(err, ch) {
@@ -2708,12 +2851,13 @@ app.post('/api/getNotifications', function(req, res) {
 			ch.assertQueue(queue);
 			ch.consume(queue, function(msg) {
 				notifications.push(msg.content.toString());
-				ch.ack(msg); //ch.ackAll() doesn't seem to work
+				ch.ack(msg); //ch.ackAll(); doesn't seem to work
 			}, { noAck: false } );
 		} );
+
 		setTimeout(function() {
 			conn.close();
-			if(notifications.length === 0) {
+			if(notifications.length == 0) {
 				res.json( { result: 'success',
 							message: notifications } );
 				console.log('Notifications (empty array) sent!');
@@ -2726,28 +2870,19 @@ app.post('/api/getNotifications', function(req, res) {
 			var queryMess_body = createOrionQueryBody(queryMess_elements);
 	
 			request.post( {
-				headers: HEADERS,
+				headers: ORION_HEADERS,
 				url: URLS.orion_queryContext,
 				body: JSON.stringify(queryMess_body)
 			}, function(error, response, body) {
 				if(error) {
-					console.log('Error in sending request to Orion');
-					res.json( { result: 'error',
-								message: 'Couldn\'t send request to Object Store' } );
-					return;
+					console.log('Errore nell\'invio della richiesta');
 				}
 				var body_j = JSON.parse(body);
 				//errorCode 404 shouldn't be possible, if I have mess_id it should exist in orion
-				if(typeof body_j.contextResponses === 'undefined') {
-					if(body_j.errorCode.code === '404') {
-						res.json( { result: 'success',
-									message: [] } );
-						console.log('Notifications (empty array) sent!');
-						return;
-					}
+				if(body_j.contextResponses === 'undefined') {
 					res.json( { result: 'error',
 								message: 'Error in retrieving ' } );
-					console.log('Error in retrieving notifications');
+					console.log('Error in updating user notification settings');
 					return;
 				}
 				var tweetsFromQuery = body_j.contextResponses;
@@ -2761,6 +2896,7 @@ app.post('/api/getNotifications', function(req, res) {
 	} );
 } );
 
+
 // Returns 404 page for non-existant resources
 app.use(function(req, res, next) {
 	// http://expressjs.com/it/starter/faq.html#in-che-modo--possibile-gestire-le-risposte-404
@@ -2768,6 +2904,7 @@ app.use(function(req, res, next) {
 									stylesheet: '40x.css',
 									author: AUTHORS });
 } );
+
 
 var server;
 
@@ -2777,18 +2914,17 @@ initQuery_elements.push(createOrionQueryElement('User', 'true', '.\*'));
 var initQuery_body = createOrionQueryBody(initQuery_elements);
 
 request.post( {
-	headers: HEADERS,
+	headers: ORION_HEADERS,
 	url: URLS.orion_queryContext,
 	body: JSON.stringify(initQuery_body),
 	qs: { limit: 1000 }
 }, function(error, response, body) {
-	if(error) {
-		console.log('Error in sending query request to Orion');
-		process.exit(0);
-	}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 	var queryRes = JSON.parse(body);
 	if(typeof queryRes.contextResponses === 'undefined') {
-		if (queryRes.errorCode.code === '404') {
+		if (queryRes.errorCode.code == '404') {
 			console.log('***** First launch of \"Tweet-A-Feeling\"! (or no users ever used it) *****');
 			server = app.listen(4242, function() {
 				var port = server.address().port;
@@ -2808,19 +2944,23 @@ request.post( {
 		reset_attributes.push(createOrionAttribute('logged', 'boolean', 'false'));
 		reset_attributes.push(createOrionAttribute('Access_Token', 'string', ''));
 		reset_attributes.push(createOrionAttribute('Access_Token_S', 'string', ''));
+
+		//var notif_w = { "feelings": [],
+		//				"topics": [] };
+		//reset_attributes.push(createOrionAttribute('notif_wanted', 'object', notif_w));
+
 		var reset_elements = [];
 		reset_elements.push(createOrionElement('User', 'false', reset_user, reset_attributes));
 		var reset_body = createOrionBody(reset_elements, 'APPEND');
 
 		request.post( {
-			headers: HEADERS,
+			headers: ORION_HEADERS,
 			url: URLS.orion_updateContext,
 			body: JSON.stringify(reset_body)
 		}, function(error, response, body) {
-			if(error) {
-				console.log('Error in sending update request to Orion');
-				process.exit(0);
-			}
+				if(error) {
+					console.log('Errore nell\'invio della richiesta');
+				}
 			var body_j = JSON.parse(body);
 			if(body_j.contextResponses === 'undefined') {
 				console.log('Error in resetting a user, exiting...');
@@ -2840,3 +2980,23 @@ request.post( {
 		} );
 	}, 5000 );
 } );
+
+/* As is done with every Orion call, we need to check if twitter responds with ad error
+	every time we send a request to it.
+
+	if(JSON.parse(body).error !== 'undefined') <- or something like this
+
+
+Everywhere we use request.xxx() in the callback function we have to check 'error':
+
+	if(error) {
+		return console.log('Error:', error);
+	}
+
+	or
+
+	if (!error && response.statusCode == 200) {
+		console.log(body) // Show the HTML for the Google homepage.
+	}
+
+and act accordingly to the situation. */

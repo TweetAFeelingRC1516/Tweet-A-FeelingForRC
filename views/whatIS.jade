@@ -1,7 +1,7 @@
 extends header
 
 block content
-	h2 Information about what do Tweet-A-Feeling: 
+	h2 Information about what do Tweet a Feeling : 
 	table
 		tr
 			td
@@ -18,20 +18,12 @@ block content
 		div 
 			div#feeling.des
 				| List of feelings:
-				ul#ulicon  
-					li Happy
-					li Sad 
-					li Mad
-					li Bored
-					li Tired
-					li Hopeful
-					li Worried
+				ul#ulicon 
+				each f_elem in feelings
+					li= f_elem
 			| &nbsp;
 			div#topic.des
 				| List of topics:
 				ul#ulicon
-					li Study
-					li Work
-					li Sport
-					li Hobby
-					li Health
+				each t_elem in topics
+					li= t_elem
