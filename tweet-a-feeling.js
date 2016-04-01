@@ -536,7 +536,9 @@ app.get('/42', function(req, res) {
 app.get('/whatIS', function(req, res) {
 	res.render('whatIS', { title: '~ Tweet-A-what-IS-this? ~',
 							stylesheet: 'whatIS.css',
-							author: AUTHORS } );
+							author: AUTHORS,
+							feelings: FEELINGS,
+						    topics: TOPICS } );
 } );
 
 app.get('/about', function(req, res) {
