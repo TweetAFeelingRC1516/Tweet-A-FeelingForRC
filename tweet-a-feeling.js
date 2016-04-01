@@ -538,7 +538,7 @@ app.get('/whatIS', function(req, res) {
 							stylesheet: 'whatIS.css',
 							author: AUTHORS,
 							feelings: FEELINGS,
-						    topics: TOPICS } );
+							topics: TOPICS } );
 } );
 
 app.get('/about', function(req, res) {
