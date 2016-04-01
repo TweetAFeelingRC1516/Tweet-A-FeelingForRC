@@ -3,9 +3,9 @@ extends header
 block content
 	div#userBox
 		| <strong>Username:</strong> #{user} <br>
-		form.headerForm(action='/_profile', method='get'): input(type='submit', value='profile')
+		form.headerForm(action='/_profile', method='get'): input(type='submit', value='Profile')
 		| &nbsp;
-		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='logout')
+		form.headerForm(action='/logout', method='get'): input#logout(type='submit', value='Logout')
 		| <br>
 		div#spacer
 		form.headerForm(action='/_main', method='get'): input#back(type='submit', value='<- back')
