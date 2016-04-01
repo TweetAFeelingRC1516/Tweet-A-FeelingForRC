@@ -58,40 +58,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session( {
 	name: 'T-a-F',
 	secret: genSessionSecret(),
-	/*		RESAVE (explicit to remove warning at startup)
-		TRUE:   Save session in database at every request, even if session is not modified (DEFAULT)
-		FALSE:  The opposite
-
-		What to set?
-		If store implements touch() interface to update session timespan, then 'false' can be used safely.
-		It help avoid race-condition issues.
-
-		Our store implements touch(), so false is ok, after defining update interval in store.
-
-		More:
-		https://github.com/expressjs/session/blob/master/README.md#resave
-		https://github.com/kcbanner/connect-mongo#lazy-session-update
-	*/
 	resave: false,
-	/*		SAVE UNINITIALIZED (explicit to remove warning at startup)
-		TRUE:   Forces a new "empty" (not yet modified) session to be saved in store (DEFAULT)
-		FALSE:  The opposite, stores session first time when modified
-
-		False helps reduce storage
-		
-		More:
-		https://github.com/expressjs/session/blob/master/README.md#saveuninitialized
-	*/
 	saveUninitialized: true,
 	store: new mongoStore( {
-		url: 'mongodb://mongo/tweetafeeling'/*,
-		port: 27017*/
+		url: 'mongodb://mongo/tweetafeeling'
 	} )
-	/* COOKIE
-	Set options for cookie, In particulare maxAge.
-	See more here:
-	https://github.com/expressjs/session/blob/master/README.md#cookie-options
-	*/
 } ));
 
 app.use(express.static(__dirname + '/static'));
