@@ -1,9 +1,13 @@
-div, h2 {
+div, h2, td {
     text-align: center;
 }
 
 table {
-    margin-left: 430px;
+    width: 100%;
+}
+
+td {
+    padding-bottom: 10px;
 }
 
 #balloon {
@@ -20,21 +24,10 @@ table {
     border-radius: 6px;
     padding: 5px;
     margin: 0px 15px;
+    vertical-align: middle;
 }
-#feeling {
+.des:hover {
     border: 3px solid #3333ff; 
     background-color: #ccddff;
     transform: scale(1.05, 1.05);  
-}
-
-#topic {
-    border: 3px solid #3333ff; 
-    background-color: #ccddff;
-    transform: scale(1.05, 1.05); 
-    vertical-align: top; 
-}
-
-#ulicon {
-    list-style-image: url('Twitter_icon.png'); 
-    text-align: left;
 }

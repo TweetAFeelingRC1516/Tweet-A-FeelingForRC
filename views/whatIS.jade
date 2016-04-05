@@ -1,29 +1,32 @@
 extends header
 
 block content
-	h2 Information about what do Tweet a Feeling : 
+	h2 Informations about what "Tweet-A-Feeling" does: 
 	table
 		tr
 			td
 				div#balloon
-					| This application shows charts about tweets sent through it. 
+					| This application shows charts about tweets sent through it.
 					br
-					| You write a tweet setting your #FEELING and #TOPIC. 
+					| You write a tweet setting a #FEELING and a #TOPIC.
 					br
-					| Having done that, we show you different types of charts, 
+					| Having done that, we show you different types of charts,
 					br
-					| confronting used words or counting #FEELINGs and #TOPICs.
-	br
-	div
-		div 
-			div#feeling.des
-				| List of feelings:
-				ul#ulicon 
-				each f_elem in feelings
-					li= f_elem
-			| &nbsp;
-			div#topic.des
-				| List of topics:
-				ul#ulicon
-				each t_elem in topics
-					li= t_elem
+					| confronting words you used with words other people used
+					br
+					| or counting #FEELINGs and #TOPICs.
+		tr
+			td
+				div#feeling.des
+					strong
+						| List of Feelings:
+					ul
+					each f_elem in feelings
+						li= f_elem
+				| &nbsp;
+				div#topic.des
+					strong
+						| List of Topics:
+					ul
+					each t_elem in topics
+						li= t_elem
